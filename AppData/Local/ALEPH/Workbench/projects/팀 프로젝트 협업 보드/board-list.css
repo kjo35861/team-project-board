@@ -1,0 +1,633 @@
+.server-board-section {
+  margin: 18px 0 0;
+  padding-top: 15px;
+  border-top: 1px solid #f0f1f5;
+}
+
+.server-board-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 10px 8px;
+  color: #777f91;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.server-board-heading::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38a77c;
+  content: "";
+}
+
+.server-board-active {
+  margin: 7px 0 0;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: #edf6f0;
+  color: #557461;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.shared-board-management,
+.board-invite-management {
+  min-width: 0;
+}
+
+.shared-board-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 7px;
+}
+
+.shared-board-create,
+.shared-board-action,
+.shared-board-cancel,
+.shared-board-submit,
+.board-invite-create,
+.board-invite-copy,
+.board-invite-cancel,
+.board-invite-retry {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e4e6ed;
+  border-radius: 7px;
+  background: #fff;
+  color: #5e52d2;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.shared-board-create:hover,
+.shared-board-action:hover,
+.shared-board-cancel:hover,
+.board-invite-create:hover,
+.board-invite-copy:hover,
+.board-invite-cancel:hover,
+.board-invite-retry:hover {
+  border-color: #c9c3fa;
+  background: #f7f6ff;
+}
+
+.shared-board-submit {
+  border-color: #5b4fda;
+  background: #5b4fda;
+  color: #fff;
+}
+
+.shared-board-submit:hover {
+  background: #4d42c5;
+}
+
+.shared-board-create:disabled,
+.shared-board-action:disabled,
+.shared-board-cancel:disabled,
+.shared-board-submit:disabled,
+.board-invite-create:disabled,
+.board-invite-copy:disabled,
+.board-invite-cancel:disabled,
+.board-invite-retry:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.shared-board-message,
+.shared-board-dialog-message,
+.board-invite-message,
+.board-member-message {
+  margin: 0 0 7px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: #f1f8f4;
+  color: #42785c;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.shared-board-message[data-kind="error"],
+.shared-board-dialog-message[data-kind="error"],
+.board-invite-message[data-kind="error"],
+.board-member-message[data-kind="error"] {
+  background: #fff3f3;
+  color: #a9444c;
+}
+
+.shared-board-message[data-kind="info"],
+.shared-board-dialog-message[data-kind="info"],
+.board-invite-message[data-kind="info"] {
+  background: #f3f5fb;
+  color: #667085;
+}
+
+.board-invite-message[data-kind="warning"] {
+  background: #fff8e8;
+  color: #7c6329;
+}
+
+.shared-board-list-content {
+  min-width: 0;
+}
+
+.shared-board-state {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #858c9c;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.shared-board-error {
+  padding-bottom: 5px;
+  color: #a9444c;
+}
+
+.shared-board-retry {
+  min-height: 28px;
+  margin: 2px 10px 5px;
+  padding: 0 9px;
+  border: 1px solid #e4e6ed;
+  border-radius: 7px;
+  background: #fff;
+  color: #5e52d2;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.shared-board-retry:hover {
+  border-color: #c9c3fa;
+  background: #f7f6ff;
+}
+
+.shared-board-retry:focus-visible,
+.shared-board-create:focus-visible,
+.shared-board-action:focus-visible,
+.shared-board-cancel:focus-visible,
+.shared-board-submit:focus-visible,
+.board-member-management button:focus-visible,
+.board-invite-management button:focus-visible,
+.invite-acceptance-panel button:focus-visible {
+  outline: 3px solid rgba(103, 89, 232, 0.24);
+  outline-offset: 2px;
+}
+
+.shared-board-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shared-board-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 7px 5px 10px;
+  border-radius: 8px;
+  background: #f7faf8;
+}
+
+.shared-board-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.shared-board-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #4c5d55;
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-board-role {
+  flex: 0 0 auto;
+  color: #74877c;
+  font-size: 9px;
+}
+
+.shared-board-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.shared-board-action {
+  min-height: 25px;
+  padding: 0 6px;
+  border-color: #e8e9ef;
+  font-size: 9px;
+}
+
+.shared-board-action-danger,
+.board-member-remove,
+.board-member-leave {
+  color: #a9444c;
+}
+
+.shared-board-member-panel {
+  flex: 1 0 100%;
+  min-width: 0;
+  padding: 8px 3px 3px;
+  border-top: 1px solid #e7eee9;
+}
+
+.board-member-management,
+.board-invite-management {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.board-member-header,
+.board-member-identity,
+.board-invite-toolbar,
+.board-invite-details {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.board-member-header,
+.board-invite-toolbar {
+  justify-content: space-between;
+}
+
+.board-member-title,
+.board-invite-title {
+  margin: 0;
+  color: #65766c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.board-member-refresh,
+.board-member-retry,
+.board-member-remove,
+.board-member-leave {
+  min-height: 27px;
+  padding: 0 8px;
+  border: 1px solid #e2e7e3;
+  border-radius: 7px;
+  background: #fff;
+  color: #59675f;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.board-member-refresh:hover,
+.board-member-retry:hover {
+  border-color: #c9c3fa;
+  background: #f7f6ff;
+  color: #5e52d2;
+}
+
+.board-member-message {
+  margin: 0;
+  font-size: 9px;
+}
+
+.board-member-state,
+.board-invite-state {
+  margin: 0;
+  color: #858c9c;
+  font-size: 9px;
+}
+
+.board-member-list,
+.board-invite-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-member-item,
+.board-invite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  min-width: 0;
+}
+
+.board-member-identity {
+  flex: 1 1 auto;
+}
+
+.board-member-avatar {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5f1ea;
+  color: #508168;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.board-member-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #536259;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-member-role,
+.board-invite-status {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border-radius: 10px;
+  background: #eef0ff;
+  color: #655ac3;
+  font-size: 8px;
+}
+
+.board-member-role-owner {
+  background: #fff4dc;
+  color: #8a6828;
+}
+
+.board-member-remove,
+.board-member-leave {
+  min-height: 24px;
+  font-size: 8px;
+}
+
+.board-member-leave {
+  justify-self: start;
+}
+
+.board-member-management button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.board-invite-create,
+.board-invite-copy,
+.board-invite-cancel,
+.board-invite-retry {
+  min-height: 25px;
+  padding: 0 7px;
+  font-size: 9px;
+}
+
+.board-invite-share {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 7px;
+  padding: 8px;
+  border: 1px solid #e6e9ee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.board-invite-link-label {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 4px;
+  color: #65766c;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.board-invite-link {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 7px;
+  border: 1px solid #e5e7ee;
+  border-radius: 6px;
+  color: #596271;
+  font: inherit;
+  font-size: 9px;
+}
+
+.board-invite-link:focus-visible {
+  outline: 3px solid rgba(103, 89, 232, .2);
+  border-color: #8d83ea;
+}
+
+.board-invite-share-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #858c9c;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.board-invite-list-heading {
+  margin: 3px 0 0;
+  color: #65766c;
+  font-size: 9px;
+}
+
+.board-invite-details {
+  flex-wrap: wrap;
+}
+
+.board-invite-expiry {
+  color: #858c9c;
+  font-size: 8px;
+}
+
+.board-invite-status-accepted {
+  background: #e9f5ec;
+  color: #42785c;
+}
+
+.board-invite-status-canceled,
+.board-invite-status-expired {
+  background: #f1f2f5;
+  color: #747b8b;
+}
+
+.invite-acceptance-panel {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid #dedcf8;
+  border-radius: 10px;
+  background: #f8f7ff;
+}
+
+.invite-acceptance-title {
+  margin: 0;
+  color: #49428f;
+  font-size: 13px;
+}
+
+.invite-acceptance-description,
+.invite-acceptance-message {
+  margin: 0;
+  color: #747b8b;
+  font-size: 10px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.invite-acceptance-message[data-kind="error"] {
+  color: #a9444c;
+}
+
+.invite-acceptance-message[data-kind="success"] {
+  color: #42785c;
+}
+
+.invite-acceptance-message[data-kind="warning"] {
+  color: #7c6329;
+}
+
+.invite-acceptance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.invite-acceptance-actions button {
+  min-height: 29px;
+  padding: 0 9px;
+  border: 1px solid #dfddef;
+  border-radius: 7px;
+  background: #fff;
+  color: #5e52d2;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.invite-acceptance-actions button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.shared-board-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid #e8e9f0;
+  border-radius: 14px;
+  background: #fff;
+  color: #34394a;
+  box-shadow: 0 18px 60px rgba(31, 36, 55, 0.2);
+}
+
+.shared-board-dialog::backdrop {
+  background: rgba(25, 29, 43, 0.4);
+}
+
+.shared-board-form {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+
+.shared-board-dialog-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.shared-board-dialog-intro {
+  margin: 0;
+  color: #858c9c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shared-board-label {
+  display: grid;
+  gap: 6px;
+  color: #555c6d;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.shared-board-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid #dfe2ea;
+  border-radius: 8px;
+  color: #34394a;
+  font: inherit;
+  font-size: 13px;
+}
+
+.shared-board-input:focus-visible {
+  outline: 3px solid rgba(103, 89, 232, 0.18);
+  border-color: #8d83ea;
+}
+
+.shared-board-input[aria-invalid="true"] {
+  border-color: #c6535c;
+}
+
+.shared-board-field-error {
+  min-height: 0;
+  margin: -8px 0 0;
+  color: #a9444c;
+  font-size: 11px;
+}
+
+.shared-board-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+@media (max-width: 760px) {
+  .server-board-section {
+    margin-top: 14px;
+    padding: 12px 10px 0;
+  }
+
+  .server-board-heading {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .shared-board-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .shared-board-summary {
+    min-height: 25px;
+  }
+
+  .shared-board-actions {
+    flex-wrap: wrap;
+  }
+
+  .board-member-item,
+  .board-invite-item {
+    align-items: flex-start;
+  }
+}
