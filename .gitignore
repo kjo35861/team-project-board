@@ -1,0 +1,15 @@
+# Build outputs and dependencies
+node_modules/
+dist/
+coverage/
+.vercel/
+.cache/
+**/.cache/
+supabase/.temp/
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+# OS / editor files
+.DS_Store
+Thumbs.db
