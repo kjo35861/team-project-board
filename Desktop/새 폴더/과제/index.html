@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>중간 점검 1차 제출</title>
+  <style>
+    :root {
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      color: #172b3c;
+      background: #f4f7f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+    }
+
+    .form-card {
+      width: min(100%, 720px);
+      margin: 0 auto;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #dce5eb;
+      border-radius: 12px;
+    }
+
+    .progress {
+      margin: 0 0 5px;
+      color: #16708a;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 15px;
+      font-size: 18px;
+    }
+
+    .field { margin-bottom: 12px; }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    textarea,
+    input[type="url"] {
+      display: block;
+      width: 100%;
+      border: 1px solid #d6e0e7;
+      border-radius: 7px;
+      background: #fff;
+      color: #172b3c;
+      font: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 74px;
+      padding: 10px;
+      resize: vertical;
+    }
+
+    input[type="url"] {
+      height: 39px;
+      padding: 0 10px;
+    }
+
+    textarea:focus,
+    input[type="url"]:focus {
+      border-color: #247789;
+      box-shadow: 0 0 0 2px #24778920;
+    }
+
+    ::placeholder { color: #8495a3; opacity: 1; }
+
+    .upload-box {
+      padding: 12px;
+      border: 1px dashed #d6e0e7;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .upload-box label {
+      margin: 0;
+      color: #176579;
+      cursor: pointer;
+    }
+
+    .upload-hint {
+      margin: 7px 0 0;
+      color: #8495a3;
+      font-size: 12px;
+    }
+
+    #files { display: none; }
+
+    .file-list {
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      text-align: left;
+      font-size: 12px;
+    }
+
+    .notice {
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f2f5f7;
+      color: #536574;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    button {
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: #206675;
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: #185564; }
+
+    @media (min-width: 600px) {
+      body { padding: 28px 16px; }
+      .form-card { padding: 24px; }
+      textarea { min-height: 90px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="form-card">
+    <p class="progress">나의 앱 프로젝트 · 1/3</p>
+    <h1>중간 점검 1차 · 대기</h1>
+
+    <form id="reviewForm">
+      <div class="field">
+        <label for="feature">이번에 만든 것</label>
+        <textarea id="feature" required placeholder="새로 구현하거나 완성한 기능과 실제 동작을 구체적으로 적어 주세요."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="check">확인하는 방법 · 3단계 내</label>
+        <textarea id="check" required placeholder="1. 주소에 접속합니다. 2. ... 3. 화면에서 ...을 확인합니다."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="change">바뀐 점과 그 이유</label>
+        <textarea id="change" required placeholder="이전 계획이나 점검 뒤 무엇을 왜 바꾸었는지 적어 주세요."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="ai-review">AI에게 맡긴 일과 내가 판단한 일</label>
+        <textarea id="ai-review" required placeholder="AI가 만든 부분과 직접 검토·수정·결정한 부분을 나눠 적어 주세요."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="next">다음에 할 일</label>
+        <textarea id="next" required placeholder="다음 점검까지 하거나 최종 제출 뒤 보완할 일을 적어 주세요."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="result-url">결과물 URL · 필수</label>
+        <input id="result-url" type="url" required placeholder="https://" />
+      </div>
+
+      <div class="field">
+        <label for="source-url">소스 저장소 URL · 선택</label>
+        <input id="source-url" type="url" placeholder="https://" />
+      </div>
+
+      <div class="field upload-box">
+        <label for="files">제출 파일 선택 · 여러 개 가능</label>
+        <input id="files" type="file" multiple />
+        <p class="upload-hint">자료를 첨부할 수 있습니다.</p>
+        <ul class="file-list" id="fileList"></ul>
+      </div>
+
+      <p class="notice">
+        <strong>선택한 파일은 제출용으로 업로드됩니다.</strong><br />
+        학생은 자기 파일만, 담당 강사와 운영자는 확인 대상 학생의 파일만 볼 수 있습니다.
+        한 번에 10개·전체 8MB까지 올릴 수 있습니다.
+      </p>
+
+      <button type="submit">중간 점검 1차 제출</button>
+    </form>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById("files");
+    const fileList = document.getElementById("fileList");
+
+    fileInput.addEventListener("change", () => {
+      fileList.replaceChildren();
+
+      [...fileInput.files].forEach((file) => {
+        const item = document.createElement("li");
+        item.textContent = `${file.name} (${(file.size / 1024).toFixed(1)}KB)`;
+        fileList.appendChild(item);
+      });
+    });
+
+    document.getElementById("reviewForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      if (!event.currentTarget.reportValidity()) return;
+
+      alert("입력한 내용을 확인했습니다. 실제 제출 처리는 서버 연결이 필요합니다.");
+    });
+  </script>
+</body>
+</html>
