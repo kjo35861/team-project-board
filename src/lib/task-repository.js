@@ -174,3 +174,103 @@ export async function createTask(client, boardId, input) {
   }
   return task;
 }
+
+
+function normalizeTaskId(taskId) {
+  if (typeof taskId !== "string" || !taskId.trim()) {
+    throw new BoardRepositoryError("invalid_input");
+  }
+  return taskId.trim();
+}
+
+function normalizeTaskStatus(status) {
+  if (typeof status !== "string" || !TASK_STATUSES.has(status)) {
+    throw new TaskRepositoryInputError({ status: "진행 상태를 확인해 주세요." });
+  }
+  return status;
+}
+
+/**
+ * Update one task within the requested board using only editable task fields.
+ * Board membership and field-level permissions remain enforced by RLS.
+ */
+export async function updateTask(client, boardId, taskId, input) {
+  const requestedBoardId = normalizeBoardId(boardId);
+  const requestedTaskId = normalizeTaskId(taskId);
+  const validation = validateTaskInput(input);
+  if (!validation.valid) throw new TaskRepositoryInputError(validation.errors);
+  const assigneeId = normalizeAssigneeId(input);
+
+  if (typeof client?.from !== "function") {
+    throw new BoardRepositoryError("request_failed");
+  }
+  await requireAuthenticatedUser(client);
+  const value = validation.value;
+  const updateValues = {
+    title: value.title,
+    description: value.description || null,
+    status: value.status,
+    assignee_id: assigneeId,
+    due_date: value.dueDate,
+  };
+
+  let result;
+  try {
+    result = await client
+      .from("tasks")
+      .update(updateValues)
+      .eq("id", requestedTaskId)
+      .eq("board_id", requestedBoardId)
+      .select(TASK_COLUMNS)
+      .single();
+  } catch (error) {
+    throw toRepositoryError(error);
+  }
+
+  if (result?.error) throw toRepositoryError(result.error);
+  const task = normalizeTask(result?.data, requestedBoardId);
+  if (task.id !== requestedTaskId
+    || task.title !== value.title
+    || task.description !== value.description
+    || task.status !== value.status
+    || task.assigneeId !== assigneeId
+    || task.dueDate !== value.dueDate) {
+    throw new BoardRepositoryError("request_failed");
+  }
+  return task;
+}
+
+/**
+ * Update only a task's status while retaining the same authentication,
+ * board/task scope, response validation, and safe error mapping as updateTask.
+ */
+export async function updateTaskStatus(client, boardId, taskId, status) {
+  const requestedBoardId = normalizeBoardId(boardId);
+  const requestedTaskId = normalizeTaskId(taskId);
+  const normalizedStatus = normalizeTaskStatus(status);
+
+  if (typeof client?.from !== "function") {
+    throw new BoardRepositoryError("request_failed");
+  }
+  await requireAuthenticatedUser(client);
+
+  let result;
+  try {
+    result = await client
+      .from("tasks")
+      .update({ status: normalizedStatus })
+      .eq("id", requestedTaskId)
+      .eq("board_id", requestedBoardId)
+      .select(TASK_COLUMNS)
+      .single();
+  } catch (error) {
+    throw toRepositoryError(error);
+  }
+
+  if (result?.error) throw toRepositoryError(result.error);
+  const task = normalizeTask(result?.data, requestedBoardId);
+  if (task.id !== requestedTaskId || task.status !== normalizedStatus) {
+    throw new BoardRepositoryError("request_failed");
+  }
+  return task;
+}
