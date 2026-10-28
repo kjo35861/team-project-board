@@ -631,3 +631,247 @@
     align-items: flex-start;
   }
 }
+
+/* Shared-board management uses the same visual scale as the task board. */
+.server-board-section {
+  margin: 24px 0 26px;
+  padding-top: 21px;
+  border-top-color: #e5e7ef;
+}
+
+.server-board-heading {
+  gap: 9px;
+  margin: 0 0 13px;
+  color: #596176;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.server-board-heading::before {
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 0 4px #eaf7f0;
+}
+
+.shared-board-toolbar {
+  margin-bottom: 12px;
+}
+
+.shared-board-create,
+.shared-board-action,
+.shared-board-cancel,
+.shared-board-submit,
+.board-invite-create,
+.board-invite-copy,
+.board-invite-cancel,
+.board-invite-retry {
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.shared-board-create {
+  border-color: #6759e8;
+  background: #6759e8;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(103, 89, 232, 0.15);
+}
+
+.shared-board-create:hover {
+  border-color: #5144d3;
+  background: #5144d3;
+  color: #fff;
+}
+
+.shared-board-message,
+.shared-board-dialog-message,
+.board-invite-message,
+.board-member-message {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dceee4;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.shared-board-list {
+  gap: 9px;
+}
+
+.shared-board-item {
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid #e0e9e3;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(45, 71, 57, 0.04);
+}
+
+.shared-board-summary {
+  gap: 10px;
+}
+
+.shared-board-name {
+  color: #3f5147;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shared-board-role {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f4f2;
+  color: #728078;
+  font-size: 11px;
+}
+
+.shared-board-actions {
+  gap: 6px;
+}
+
+.shared-board-action {
+  min-height: 34px;
+  padding: 0 11px;
+  border-color: #dfe3eb;
+  color: #5d55c8;
+  font-size: 12px;
+}
+
+.shared-board-action:hover {
+  border-color: #c9c3fa;
+  background: #f5f3ff;
+}
+
+.shared-board-action-danger {
+  border-color: #f0d9dc;
+  background: #fff9f9;
+  color: #b34d58;
+}
+
+.shared-board-action-danger:hover {
+  border-color: #e8bfc4;
+  background: #fff0f1;
+  color: #9f3945;
+}
+
+.shared-board-active {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #d8eee2;
+  border-radius: 10px;
+  background: #eff9f3;
+  color: #456f59;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.shared-board-state {
+  padding: 13px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.shared-board-retry {
+  min-height: 34px;
+  margin: 3px 12px 7px;
+  font-size: 12px;
+}
+
+.shared-board-member-panel {
+  padding: 14px 4px 4px;
+  border-top-color: #e4ebe6;
+}
+
+.board-member-title,
+.board-invite-title {
+  font-size: 12px;
+}
+
+.board-member-refresh,
+.board-member-retry,
+.board-member-remove,
+.board-member-leave {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.board-member-state,
+.board-invite-state,
+.board-member-name,
+.board-invite-expiry {
+  font-size: 11px;
+}
+
+.board-member-role,
+.board-invite-status {
+  font-size: 10px;
+}
+
+.board-invite-create,
+.board-invite-copy,
+.board-invite-cancel,
+.board-invite-retry {
+  min-height: 32px;
+  font-size: 11px;
+}
+
+.shared-board-dialog {
+  border-radius: 16px;
+}
+
+.shared-board-form {
+  gap: 15px;
+  padding: 28px;
+}
+
+.shared-board-dialog-title {
+  font-size: 22px;
+}
+
+.shared-board-dialog-intro,
+.shared-board-label {
+  font-size: 13px;
+}
+
+.shared-board-input {
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.shared-board-field-error {
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .server-board-section {
+    margin-top: 20px;
+    padding: 17px 0 0;
+  }
+
+  .shared-board-item {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .shared-board-summary {
+    min-height: 30px;
+  }
+
+  .shared-board-actions {
+    width: 100%;
+  }
+
+  .shared-board-action {
+    flex: 1 1 auto;
+  }
+
+  .shared-board-active {
+    font-size: 12px;
+  }
+}
