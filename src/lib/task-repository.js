@@ -93,6 +93,24 @@ function normalizeAssigneeId(input) {
   return raw.trim();
 }
 
+
+function normalizeTaskInput(input) {
+  const validation = validateTaskInput(input);
+  const fieldErrors = { ...validation.errors };
+  let assigneeId = null;
+
+  try {
+    assigneeId = normalizeAssigneeId(input);
+  } catch (error) {
+    Object.assign(fieldErrors, error.fieldErrors);
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    throw new TaskRepositoryInputError(fieldErrors);
+  }
+  return { value: validation.value, assigneeId };
+}
+
 /** Fetch only the authenticated user's RLS-visible tasks for one board. */
 export async function listTasks(client, boardId) {
   const requestedBoardId = normalizeBoardId(boardId);
@@ -129,15 +147,12 @@ export async function listTasks(client, boardId) {
  */
 export async function createTask(client, boardId, input) {
   const requestedBoardId = normalizeBoardId(boardId);
-  const validation = validateTaskInput(input);
-  if (!validation.valid) throw new TaskRepositoryInputError(validation.errors);
-  const assigneeId = normalizeAssigneeId(input);
+  const { value, assigneeId } = normalizeTaskInput(input);
 
   if (typeof client?.from !== "function") {
     throw new BoardRepositoryError("request_failed");
   }
   const userId = await requireAuthenticatedUser(client);
-  const value = validation.value;
 
   // Whitelist insert columns: IDs, creator, and timestamps are not accepted
   // from the caller. PostgreSQL supplies the task ID and timestamps.
@@ -197,15 +212,12 @@ function normalizeTaskStatus(status) {
 export async function updateTask(client, boardId, taskId, input) {
   const requestedBoardId = normalizeBoardId(boardId);
   const requestedTaskId = normalizeTaskId(taskId);
-  const validation = validateTaskInput(input);
-  if (!validation.valid) throw new TaskRepositoryInputError(validation.errors);
-  const assigneeId = normalizeAssigneeId(input);
+  const { value, assigneeId } = normalizeTaskInput(input);
 
   if (typeof client?.from !== "function") {
     throw new BoardRepositoryError("request_failed");
   }
   await requireAuthenticatedUser(client);
-  const value = validation.value;
   const updateValues = {
     title: value.title,
     description: value.description || null,
