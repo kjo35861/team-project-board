@@ -17,6 +17,9 @@ const ROW = {
 function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], error = null, thrown = null } = {}) {
   const calls = { from: vi.fn(), select: vi.fn(), eq: vi.fn(), order: vi.fn() };
   const builder = {
+    select: calls.select,
+    eq: calls.eq,
+    order: calls.order,
     then(resolve, reject) {
       if (thrown) return Promise.reject(thrown).then(resolve, reject);
       return Promise.resolve({ data, error }).then(resolve, reject);
@@ -32,7 +35,11 @@ function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], e
 
 function makeCreateClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
   const calls = { from: vi.fn(), insert: vi.fn(), select: vi.fn(), single: vi.fn() };
-  const builder = {};
+  const builder = {
+    insert: calls.insert,
+    select: calls.select,
+    single: calls.single,
+  };
   calls.from.mockReturnValue(builder);
   calls.insert.mockReturnValue(builder);
   calls.select.mockReturnValue(builder);
@@ -46,7 +53,12 @@ function makeCreateClient({ user = { id: "user-1" }, authError = null, data = RO
 
 function makeUpdateClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
   const calls = { from: vi.fn(), update: vi.fn(), eq: vi.fn(), select: vi.fn(), single: vi.fn() };
-  const builder = {};
+  const builder = {
+    update: calls.update,
+    eq: calls.eq,
+    select: calls.select,
+    single: calls.single,
+  };
   calls.from.mockReturnValue(builder);
   calls.update.mockReturnValue(builder);
   calls.eq.mockReturnValue(builder);
