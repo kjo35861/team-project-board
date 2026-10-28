@@ -286,3 +286,34 @@ export async function updateTaskStatus(client, boardId, taskId, status) {
   }
   return task;
 }
+
+/** Delete one task within the requested board; RLS decides whether the user may delete it. */
+export async function deleteTask(client, boardId, taskId) {
+  const requestedBoardId = normalizeBoardId(boardId);
+  const requestedTaskId = normalizeTaskId(taskId);
+
+  if (typeof client?.from !== "function") {
+    throw new BoardRepositoryError("request_failed");
+  }
+  await requireAuthenticatedUser(client);
+
+  let result;
+  try {
+    result = await client
+      .from("tasks")
+      .delete()
+      .eq("id", requestedTaskId)
+      .eq("board_id", requestedBoardId)
+      .select(TASK_COLUMNS)
+      .single();
+  } catch (error) {
+    throw toRepositoryError(error);
+  }
+
+  if (result?.error) throw toRepositoryError(result.error);
+  const task = normalizeTask(result?.data, requestedBoardId);
+  if (task.id !== requestedTaskId) {
+    throw new BoardRepositoryError("request_failed");
+  }
+  return task;
+}

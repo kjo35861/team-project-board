@@ -29,7 +29,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
   function showLocalDataNotice() {
     const notice = document.querySelector("#app-notice");
     if (!notice) return;
-    notice.textContent = "공유 보드·구성원·초대 관리는 서버에 연결됩니다. 업무 보드는 아직 로컬 프로토타입이며 아래 업무 데이터는 선택한 공유 보드와 연결되지 않습니다.";
+    notice.textContent = "공유 보드·구성원·초대와 업무 데이터가 Supabase 서버에 연결됩니다. 공유 보드를 선택하면 업무를 함께 확인하고 수정할 수 있습니다.";
     notice.dataset.kind = "platform-info";
     notice.hidden = false;
   }
@@ -46,14 +46,17 @@ if (!supabaseConfig.configured || !supabaseClient) {
 
   function showActiveServerBoard(board, metadata = {}) {
     window.__TEAMBOARD_ACTIVE_SERVER_BOARD = board ? { ...board } : null;
+    if (typeof window.__TEAMBOARD_SET_ACTIVE_BOARD === "function") {
+      window.__TEAMBOARD_SET_ACTIVE_BOARD(board ? { ...board } : null, metadata);
+    }
     const active = document.querySelector("#server-board-active");
     if (!active) return;
     active.hidden = false;
     active.dataset.boardId = board?.id || "";
     active.dataset.selectionRevision = String(metadata.revision ?? "");
     active.textContent = board
-      ? `선택된 공유 보드: ${board.name} · ${board.owner_id === window.__TEAMBOARD_AUTH_USER_ID ? "소유자" : "구성원"}. 아래 업무 영역은 이 보드와 연결되지 않은 로컬 시안입니다.`
-      : "참여 중인 공유 보드가 없습니다. 아래 업무 영역은 로컬 시안입니다.";
+      ? `선택된 공유 보드: ${board.name} · ${board.owner_id === window.__TEAMBOARD_AUTH_USER_ID ? "소유자" : "구성원"}. 아래 업무 영역은 이 보드의 서버 업무입니다.`
+      : "참여 중인 공유 보드가 없습니다. 업무를 보려면 먼저 보드에 참여하세요.";
   }
 
   function mountRemoteBoardManagement(user) {
@@ -156,6 +159,9 @@ if (!supabaseConfig.configured || !supabaseClient) {
     boardManagementUI = null;
     inviteAcceptanceUI = null;
     window.__TEAMBOARD_ACTIVE_SERVER_BOARD = null;
+    if (typeof window.__TEAMBOARD_SET_ACTIVE_BOARD === "function") {
+      window.__TEAMBOARD_SET_ACTIVE_BOARD(null, { reason: "logout" });
+    }
     clearPendingInvite();
     if (appShell) appShell.hidden = true;
     if (signOutButton) signOutButton.hidden = true;

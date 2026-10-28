@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTask, listTasks, updateTask, updateTaskStatus } from "./task-repository.js";
+import { createTask, deleteTask, listTasks, updateTask, updateTaskStatus } from "./task-repository.js";
 
 const ROW = {
   id: "task-1",
@@ -61,6 +61,26 @@ function makeUpdateClient({ user = { id: "user-1" }, authError = null, data = RO
   };
   calls.from.mockReturnValue(builder);
   calls.update.mockReturnValue(builder);
+  calls.eq.mockReturnValue(builder);
+  calls.select.mockReturnValue(builder);
+  calls.single.mockImplementation(() => {
+    if (thrown) return Promise.reject(thrown);
+    return Promise.resolve({ data, error });
+  });
+  const getUser = vi.fn().mockResolvedValue({ data: { user }, error: authError });
+  return { client: { auth: { getUser }, from: calls.from }, calls, getUser };
+}
+
+function makeDeleteClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
+  const calls = { from: vi.fn(), delete: vi.fn(), eq: vi.fn(), select: vi.fn(), single: vi.fn() };
+  const builder = {
+    delete: calls.delete,
+    eq: calls.eq,
+    select: calls.select,
+    single: calls.single,
+  };
+  calls.from.mockReturnValue(builder);
+  calls.delete.mockReturnValue(builder);
   calls.eq.mockReturnValue(builder);
   calls.select.mockReturnValue(builder);
   calls.single.mockImplementation(() => {
@@ -388,6 +408,52 @@ describe("updateTaskStatus", () => {
   it("rejects a mismatched status response", async () => {
     const setup = makeUpdateClient({ data: { ...ROW, status: "todo" } });
     await expect(updateTaskStatus(setup.client, "board-1", "task-1", "done"))
+      .rejects.toMatchObject({ code: "request_failed" });
+  });
+});
+
+describe("deleteTask", () => {
+  it("deletes one task within the requested task and board scope", async () => {
+    const setup = makeDeleteClient();
+
+    await expect(deleteTask(setup.client, " board-1 ", " task-1 "))
+      .resolves.toMatchObject({ id: "task-1", boardId: "board-1" });
+
+    expect(setup.getUser).toHaveBeenCalledOnce();
+    expect(setup.calls.from).toHaveBeenCalledWith("tasks");
+    expect(setup.calls.delete).toHaveBeenCalledOnce();
+    expect(setup.calls.eq).toHaveBeenNthCalledWith(1, "id", "task-1");
+    expect(setup.calls.eq).toHaveBeenNthCalledWith(2, "board_id", "board-1");
+    expect(setup.calls.select).toHaveBeenCalledWith("id,board_id,title,description,status,assignee_id,due_date,created_by,created_at,updated_at");
+  });
+
+  it("blocks unauthenticated, invalid, forbidden, and network deletion attempts safely", async () => {
+    const invalid = makeDeleteClient();
+    await expect(deleteTask(invalid.client, "board-1", " "))
+      .rejects.toMatchObject({ code: "invalid_input" });
+    expect(invalid.getUser).not.toHaveBeenCalled();
+
+    const noUser = makeDeleteClient({ user: null });
+    await expect(deleteTask(noUser.client, "board-1", "task-1"))
+      .rejects.toMatchObject({ code: "unauthenticated" });
+    expect(noUser.calls.from).not.toHaveBeenCalled();
+
+    const forbidden = makeDeleteClient({ error: { code: "42501", message: "permission denied" } });
+    await expect(deleteTask(forbidden.client, "board-1", "task-1"))
+      .rejects.toMatchObject({ code: "forbidden" });
+
+    const network = makeDeleteClient({ thrown: new TypeError("Failed to fetch") });
+    await expect(deleteTask(network.client, "board-1", "task-1"))
+      .rejects.toMatchObject({ code: "network" });
+  });
+
+  it("rejects a response outside the requested board or task", async () => {
+    const wrongBoard = makeDeleteClient({ data: { ...ROW, board_id: "board-2" } });
+    await expect(deleteTask(wrongBoard.client, "board-1", "task-1"))
+      .rejects.toMatchObject({ code: "request_failed" });
+
+    const wrongTask = makeDeleteClient({ data: { ...ROW, id: "task-2" } });
+    await expect(deleteTask(wrongTask.client, "board-1", "task-1"))
       .rejects.toMatchObject({ code: "request_failed" });
   });
 });

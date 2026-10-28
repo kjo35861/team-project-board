@@ -1,5 +1,8 @@
+import "./src/task-board-app.js";
+
 (() => {
   "use strict";
+  return;
   const AUTH_USER_ID = typeof window.__TEAMBOARD_AUTH_USER_ID === "string" ? window.__TEAMBOARD_AUTH_USER_ID.trim() : "";
   const STORAGE_KEY = AUTH_USER_ID ? `teamboard.data.v1.auth.${encodeURIComponent(AUTH_USER_ID)}` : "teamboard.data.v1";
   const LEGACY_TASKS_KEY = AUTH_USER_ID ? null : "teamboard.tasks.v1";
