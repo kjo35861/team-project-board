@@ -64,3 +64,12 @@ npm test         # Vitest 테스트
 ```
 
 3.3 업무 생성 저장소 코드와 테스트 코드를 추가했으나, 테스트·빌드·브라우저 실행, 실제 Supabase 요청 및 마이그레이션 적용은 진행하지 않았습니다. 위 명령과 DB 흐름은 해당 환경에서 실행한 결과를 별도로 확인해야 합니다.
+
+
+## 단계별 작업 문서
+
+- [roadmap.md](./roadmap.md): 전체 구현·검증 로드맵
+- [page-work-stages.md](./page-work-stages.md): 페이지 작업을 파트별로 나눈 실행 준비
+- [feature-implementation-status.md](./feature-implementation-status.md): 실제 코드 반영·검증 상태
+
+페이지 기능은 업무 저장소 마무리 후 서버 업무 화면 전환으로 단계적으로 진행하며, 테스트·DB·브라우저 검증 결과가 확인되기 전에는 완성으로 표시하지 않습니다.
