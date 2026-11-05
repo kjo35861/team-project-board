@@ -1,3 +1,14 @@
+## 2026-11-05 Supabase 보드 연결 복구
+
+- 연결 프로젝트의 Data API가 `PGRST205`(public.boards를 스키마 캐시에서 찾지 못함)를 반환하는 것을 확인했습니다.
+- Supabase SQL Editor에서 기존 public 스키마를 확인했습니다. 기존 학습 노트 테이블 3개와 협업 보드 테이블 이름은 충돌하지 않았습니다.
+- 저장소의 2.1~2.20 마이그레이션에 해당하는 테이블·제약·트리거·RLS·RPC DDL을 순서대로 하나의 트랜잭션에서 적용했습니다. SQL 전달 시 설명 주석은 생략했습니다. 기존 학습 데이터는 변경하지 않았습니다.
+- profiles, boards, board_members, tasks, board_invites 5개 테이블 및 RLS 활성화를 SQL 결과로 확인했습니다. PostgREST 스키마 캐시를 갱신했습니다.
+- 실제 인증 사용자 컨텍스트와 authenticated 역할로 보드 생성·조회, 업무 생성·상태 변경, roster 조회, 소유자 제약을 검증했습니다. 점검 트랜잭션은 롤백하여 점검 데이터를 남기지 않았습니다.
+- 앱을 다시 열었을 때 보드 조회 오류 대신 정상적인 '아직 참여 중인 공유 보드가 없습니다' 상태가 표시되는 것을 확인했습니다.
+- 비로그인 Data API 요청은 테이블 없음 오류 대신 접근 거부를 반환합니다. 공개 접근을 열어 해결하지 않았습니다.
+- SQL Editor 수동 적용이므로 향후 Supabase CLI로 관리할 때는 원격 migration history와 로컬 파일의 일치 여부를 먼저 확인해야 합니다. 전체 pgTAP·두 계정 초대/권한·실제 Vercel 도메인의 통합 검증은 별도로 남아 있습니다.
+
 ## Vercel 배포 작업
 
 - `vercel.json`: Vite, `npm ci`, `npm run build`, `dist`, SPA 경로 처리.
