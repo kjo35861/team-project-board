@@ -1,0 +1,50 @@
+name: Quality checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Start isolated local Supabase
+        run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Database policies and RPC tests
+        run: npx supabase test db 2>&1 | tee db-test-results.txt
+      - name: Export local-only connection settings
+        run: npx supabase status -o env > .env.integration
+      - name: Real multi-account integration
+        run: node --env-file=.env.integration scripts/test-sharing.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: database-test-results
+          path: db-test-results.txt
+      - name: Stop disposable local stack
+        if: always()
+        run: npx supabase stop --no-backup
