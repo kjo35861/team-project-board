@@ -5,7 +5,7 @@ select plan(15);
 select has_table('public', 'board_members', 'board_members table exists');
 select has_column('public', 'board_members', 'board_id', 'board membership has a board id');
 select has_pk('public', 'board_members', 'board membership is unique per board and user');
-select has_check('public', 'board_members', 'board_members_role_check', 'membership role is constrained');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_members'::regclass and conname = 'board_members_role_check' and contype = 'c'), 'membership role is constrained');
 select has_index('public', 'board_members', 'board_members_one_owner_per_board_idx', 'a board has a unique owner-role slot');
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.board_members'::regclass),

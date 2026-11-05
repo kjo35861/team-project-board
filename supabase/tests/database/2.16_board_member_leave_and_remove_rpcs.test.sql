@@ -58,28 +58,48 @@ insert into public.tasks (id, board_id, title, assignee_id, created_by) values
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '2d000000-0000-4000-8000-000000000002', true);
 select lives_ok($$select public.leave_board('2d000000-0000-4000-8000-000000000010')$$, 'regular member can leave their board');
+reset role;
 select ok(not exists (select 1 from public.board_members where board_id = '2d000000-0000-4000-8000-000000000010' and user_id = '2d000000-0000-4000-8000-000000000002'), 'leaving member membership is removed');
+set local role authenticated;
+reset role;
 select ok(exists (select 1 from public.tasks where id = '2d000000-0000-4000-8000-000000000101'), 'task assigned to a leaving member is preserved');
+set local role authenticated;
+reset role;
 select is((select assignee_id from public.tasks where id = '2d000000-0000-4000-8000-000000000101'), null::uuid, 'task assigned to a leaving member becomes unassigned');
+set local role authenticated;
 select throws_ok($$select public.leave_board('2d000000-0000-4000-8000-000000000010')$$, '42501', null, 'former member cannot leave the same board a second time');
 select throws_ok($$select public.remove_board_member('2d000000-0000-4000-8000-000000000010', '2d000000-0000-4000-8000-000000000003')$$, '42501', null, 'regular member cannot remove another member');
+reset role;
 select ok(exists (select 1 from public.board_members where board_id = '2d000000-0000-4000-8000-000000000010' and user_id = '2d000000-0000-4000-8000-000000000003'), 'target membership remains after a member removal attempt');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '2d000000-0000-4000-8000-000000000004', true);
 select throws_ok($$select public.remove_board_member('2d000000-0000-4000-8000-000000000010', '2d000000-0000-4000-8000-000000000003')$$, '42501', null, 'non-member cannot remove a member from another board');
+reset role;
 select ok(exists (select 1 from public.board_members where board_id = '2d000000-0000-4000-8000-000000000010' and user_id = '2d000000-0000-4000-8000-000000000003'), 'membership remains after an outsider removal attempt');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '2d000000-0000-4000-8000-000000000001', true);
 select throws_ok($$select public.remove_board_member('2d000000-0000-4000-8000-000000000010', '2d000000-0000-4000-8000-000000000001')$$, '42501', null, 'owner cannot remove their own owner membership');
+reset role;
 select ok(exists (select 1 from public.board_members where board_id = '2d000000-0000-4000-8000-000000000010' and user_id = '2d000000-0000-4000-8000-000000000001' and role = 'owner'), 'owner membership remains after self-removal attempt');
+set local role authenticated;
 select is(public.remove_board_member('2d000000-0000-4000-8000-000000000010', '2d000000-0000-4000-8000-000000000003'), '2d000000-0000-4000-8000-000000000003'::uuid, 'owner can remove a regular member and receives the removed user id');
+reset role;
 select ok(not exists (select 1 from public.board_members where board_id = '2d000000-0000-4000-8000-000000000010' and user_id = '2d000000-0000-4000-8000-000000000003'), 'owner-removed member membership is deleted');
+set local role authenticated;
+reset role;
 select ok(exists (select 1 from public.tasks where id = '2d000000-0000-4000-8000-000000000102'), 'task assigned to an owner-removed member is preserved');
+set local role authenticated;
+reset role;
 select is((select assignee_id from public.tasks where id = '2d000000-0000-4000-8000-000000000102'), null::uuid, 'task assigned to an owner-removed member becomes unassigned');
+set local role authenticated;
 select throws_ok($$select public.remove_board_member('2d000000-0000-4000-8000-000000000010', '2d000000-0000-4000-8000-000000000003')$$, '42501', null, 'owner cannot remove the same member twice');
 select throws_ok($$select public.remove_board_member('2d000000-0000-4000-8000-000000000010', '2d000000-0000-4000-8000-000000000004')$$, '42501', null, 'owner cannot remove a user who is not a board member');
 select throws_ok($$select public.leave_board('2d000000-0000-4000-8000-000000000010')$$, '42501', null, 'board owner cannot leave their own board');
+reset role;
 select ok(exists (select 1 from public.board_members where board_id = '2d000000-0000-4000-8000-000000000010' and user_id = '2d000000-0000-4000-8000-000000000001' and role = 'owner'), 'owner membership remains after leave attempt');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '', true);
 select throws_ok($$select public.leave_board('2d000000-0000-4000-8000-000000000010')$$, '28000', null, 'leave RPC rejects a missing authenticated identity');

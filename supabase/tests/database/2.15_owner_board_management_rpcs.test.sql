@@ -1,6 +1,6 @@
 begin;
 
-select plan(39);
+select plan(40);
 
 select has_function('public', 'rename_board', array['uuid', 'text'], 'rename_board(uuid, text) RPC exists');
 select has_function('public', 'delete_board', array['uuid'], 'delete_board(uuid) RPC exists');
@@ -87,12 +87,16 @@ select lives_ok($$select public.rename_board('2c000000-0000-4000-8000-0000000000
 select set_config('request.jwt.claim.sub', '2c000000-0000-4000-8000-000000000002', true);
 select throws_ok($$select public.rename_board('2c000000-0000-4000-8000-000000000010', 'Member rename')$$, '42501', null, 'team member cannot rename the board');
 select throws_ok($$select public.delete_board('2c000000-0000-4000-8000-000000000010')$$, '42501', null, 'team member cannot delete the board');
+reset role;
 select ok(exists (select 1 from public.boards where id = '2c000000-0000-4000-8000-000000000010'), 'board remains after member management attempts');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '2c000000-0000-4000-8000-000000000003', true);
 select throws_ok($$select public.rename_board('2c000000-0000-4000-8000-000000000010', 'Outsider rename')$$, '42501', null, 'non-member cannot rename another board');
 select throws_ok($$select public.delete_board('2c000000-0000-4000-8000-000000000010')$$, '42501', null, 'non-member cannot delete another board');
+reset role;
 select ok(exists (select 1 from public.boards where id = '2c000000-0000-4000-8000-000000000010'), 'board remains after non-member management attempts');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '', true);
 select throws_ok($$select public.rename_board('2c000000-0000-4000-8000-000000000010', 'No identity')$$, '28000', null, 'rename rejects a missing authenticated identity');
@@ -101,17 +105,29 @@ select throws_ok($$select public.delete_board('2c000000-0000-4000-8000-000000000
 select set_config('request.jwt.claim.sub', '2c000000-0000-4000-8000-000000000001', true);
 select lives_ok($$select public.delete_board('2c000000-0000-4000-8000-000000000010')$$, 'owner can delete their board');
 reset role;
+reset role;
 select ok(not exists (select 1 from public.boards where id = '2c000000-0000-4000-8000-000000000010'), 'owner-deleted board is gone');
+set local role authenticated;
+reset role;
 select ok(not exists (select 1 from public.tasks where board_id = '2c000000-0000-4000-8000-000000000010'), 'board deletion cascades to its tasks');
+set local role authenticated;
+reset role;
 select ok(not exists (select 1 from public.board_members where board_id = '2c000000-0000-4000-8000-000000000010'), 'board deletion cascades to its memberships');
+set local role authenticated;
+reset role;
 select ok(not exists (select 1 from public.board_invites where board_id = '2c000000-0000-4000-8000-000000000010'), 'board deletion cascades to its invitations');
+set local role authenticated;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '2c000000-0000-4000-8000-000000000003', true);
 select lives_ok($$select public.delete_board('2c000000-0000-4000-8000-000000000020')$$, 'owner can delete their separate board');
 reset role;
+reset role;
 select ok(not exists (select 1 from public.boards where id = '2c000000-0000-4000-8000-000000000020'), 'separate owner-deleted board is gone');
+set local role authenticated;
+reset role;
 select ok(not exists (select 1 from public.tasks where board_id = '2c000000-0000-4000-8000-000000000020'), 'second board deletion also cascades to its tasks');
+set local role authenticated;
 
 select * from finish();
 rollback;

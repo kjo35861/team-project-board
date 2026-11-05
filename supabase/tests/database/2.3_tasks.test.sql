@@ -11,9 +11,9 @@ select has_column('public', 'tasks', 'assignee_id', 'task has an optional assign
 select has_column('public', 'tasks', 'due_date', 'task has an optional due date');
 select has_column('public', 'tasks', 'created_by', 'task records its creator');
 select col_type_is('public', 'tasks', 'due_date', 'date', 'due date is a calendar date without time or time zone');
-select has_check('public', 'tasks', 'tasks_title_check', 'title has a database length and non-empty constraint');
-select has_check('public', 'tasks', 'tasks_description_check', 'description has a database length constraint');
-select has_check('public', 'tasks', 'tasks_status_check', 'status is limited to the supported values');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.tasks'::regclass and conname = 'tasks_title_check' and contype = 'c'), 'title has a database length and non-empty constraint');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.tasks'::regclass and conname = 'tasks_description_check' and contype = 'c'), 'description has a database length constraint');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.tasks'::regclass and conname = 'tasks_status_check' and contype = 'c'), 'status is limited to the supported values');
 select has_index('public', 'tasks', 'tasks_board_status_due_date_created_idx', 'tasks can be listed by board, status, due date, and creation time');
 select has_index('public', 'tasks', 'tasks_board_assignee_idx', 'tasks can be filtered by board and assignee');
 select ok(

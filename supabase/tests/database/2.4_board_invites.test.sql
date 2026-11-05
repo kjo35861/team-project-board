@@ -13,12 +13,12 @@ select has_column('public', 'board_invites', 'accepted_at', 'invite records when
 select has_column('public', 'board_invites', 'accepted_by', 'invite records who accepted it');
 select has_column('public', 'board_invites', 'canceled_at', 'invite records when it was canceled');
 select has_pk('public', 'board_invites', 'each invitation has a primary key');
-select has_check('public', 'board_invites', 'board_invites_token_hash_check', 'token hash must be lowercase SHA-256 hex');
-select has_check('public', 'board_invites', 'board_invites_expires_after_7_days_check', 'invite expires exactly 168 hours after creation');
-select has_check('public', 'board_invites', 'board_invites_acceptor_matches_timestamp_check', 'acceptor and acceptance timestamp must be set together');
-select has_check('public', 'board_invites', 'board_invites_accepted_before_expiry_check', 'acceptance must be at or after creation and before expiry');
-select has_check('public', 'board_invites', 'board_invites_canceled_after_creation_check', 'cancellation cannot precede creation');
-select has_check('public', 'board_invites', 'board_invites_not_both_accepted_and_canceled_check', 'an invite cannot be accepted and canceled');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_invites'::regclass and conname = 'board_invites_token_hash_check' and contype = 'c'), 'token hash must be lowercase SHA-256 hex');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_invites'::regclass and conname = 'board_invites_expires_after_7_days_check' and contype = 'c'), 'invite expires exactly 168 hours after creation');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_invites'::regclass and conname = 'board_invites_acceptor_matches_timestamp_check' and contype = 'c'), 'acceptor and acceptance timestamp must be set together');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_invites'::regclass and conname = 'board_invites_accepted_before_expiry_check' and contype = 'c'), 'acceptance must be at or after creation and before expiry');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_invites'::regclass and conname = 'board_invites_canceled_after_creation_check' and contype = 'c'), 'cancellation cannot precede creation');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.board_invites'::regclass and conname = 'board_invites_not_both_accepted_and_canceled_check' and contype = 'c'), 'an invite cannot be accepted and canceled');
 select has_index('public', 'board_invites', 'board_invites_token_hash_key', 'token hashes are globally unique');
 select has_index('public', 'board_invites', 'board_invites_board_created_idx', 'owner invitation lists can be ordered by board and creation time');
 select ok(

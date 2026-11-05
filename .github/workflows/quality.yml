@@ -35,7 +35,9 @@ jobs:
       - name: Start isolated local Supabase
         run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - name: Database policies and RPC tests
-        run: npx supabase test db 2>&1 | tee db-test-results.txt
+        run: |
+          set -o pipefail
+          npx supabase test db 2>&1 | tee db-test-results.txt
       - name: Export local-only connection settings
         run: npx supabase status -o env > .env.integration
       - name: Real multi-account integration

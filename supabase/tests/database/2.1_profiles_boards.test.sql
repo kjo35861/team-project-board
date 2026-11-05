@@ -6,8 +6,8 @@ select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'boards', 'boards table exists');
 select has_column('public', 'profiles', 'id', 'profile id column exists');
 select has_column('public', 'boards', 'owner_id', 'board owner column exists');
-select has_check('public', 'profiles', 'profiles_display_name_check', 'profile display name has a database constraint');
-select has_check('public', 'boards', 'boards_name_check', 'board name has a database constraint');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.profiles'::regclass and conname = 'profiles_display_name_check' and contype = 'c'), 'profile display name has a database constraint');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.boards'::regclass and conname = 'boards_name_check' and contype = 'c'), 'board name has a database constraint');
 
 select throws_ok(
   $$insert into public.boards (name, owner_id) values ('', gen_random_uuid())$$,

@@ -43,48 +43,60 @@ insert into public.tasks (id, board_id, title, created_by) values
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '2b000000-0000-4000-8000-000000000002', true);
-select is((with deleted as (
+with deleted as (
   delete from public.tasks where id = '2b000000-0000-4000-8000-000000000102' returning 1
-) select count(*)::integer from deleted), 1, 'member can delete a task they created');
+) select is((select count(*)::integer from deleted), 1, 'member can delete a task they created');
+reset role;
 select ok(not exists (
   select 1 from public.tasks where id = '2b000000-0000-4000-8000-000000000102'
 ), 'member-created task was deleted');
-select is((with deleted as (
+set local role authenticated;
+with deleted as (
   delete from public.tasks where id = '2b000000-0000-4000-8000-000000000101' returning 1
-) select count(*)::integer from deleted), 0, 'member cannot delete a task created by another user');
+) select is((select count(*)::integer from deleted), 0, 'member cannot delete a task created by another user');
+reset role;
 select ok(exists (
   select 1 from public.tasks where id = '2b000000-0000-4000-8000-000000000101'
 ), 'another member task remains after the denied delete');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '2b000000-0000-4000-8000-000000000003', true);
-select is((with deleted as (
+with deleted as (
   delete from public.tasks where id = '2b000000-0000-4000-8000-000000000101' returning 1
-) select count(*)::integer from deleted), 0, 'member of another board cannot delete a task on this board');
+) select is((select count(*)::integer from deleted), 0, 'member of another board cannot delete a task on this board');
+reset role;
 select ok(exists (
   select 1 from public.tasks where id = '2b000000-0000-4000-8000-000000000101'
 ), 'task remains after a non-member delete attempt');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '2b000000-0000-4000-8000-000000000001', true);
-select is((with deleted as (
+with deleted as (
   delete from public.tasks where id = '2b000000-0000-4000-8000-000000000101' returning 1
-) select count(*)::integer from deleted), 1, 'board owner can delete a task created by a member');
+) select is((select count(*)::integer from deleted), 1, 'board owner can delete a task created by a member');
+reset role;
 select ok(not exists (
   select 1 from public.tasks where id = '2b000000-0000-4000-8000-000000000101'
 ), 'owner-deleted task is gone');
-select is((with deleted as (
+set local role authenticated;
+with deleted as (
   delete from public.tasks where id = '2b000000-0000-4000-8000-000000000201' returning 1
-) select count(*)::integer from deleted), 0, 'owner cannot delete a task on a board they do not belong to');
+) select is((select count(*)::integer from deleted), 0, 'owner cannot delete a task on a board they do not belong to');
+reset role;
 select ok(exists (
   select 1 from public.tasks where id = '2b000000-0000-4000-8000-000000000201'
 ), 'other-board task remains after the owner delete attempt');
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '2b000000-0000-4000-8000-000000000003', true);
-select is((with deleted as (
+with deleted as (
   delete from public.tasks where id = '2b000000-0000-4000-8000-000000000201' returning 1
-) select count(*)::integer from deleted), 1, 'owner can delete a task on their own board');
+) select is((select count(*)::integer from deleted), 1, 'owner can delete a task on their own board');
+reset role;
 select ok(not exists (
   select 1 from public.tasks where id = '2b000000-0000-4000-8000-000000000201'
 ), 'private-board owner-deleted task is gone');
+set local role authenticated;
 
 reset role;
 select * from finish();

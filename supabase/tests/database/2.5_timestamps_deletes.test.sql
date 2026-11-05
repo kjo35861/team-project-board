@@ -4,8 +4,8 @@ select plan(31);
 
 select has_function('public', 'set_row_timestamps', 'database timestamp trigger helper exists');
 select has_trigger('public', 'profiles', 'profiles_set_row_timestamps', 'profiles use database-owned timestamps');
-select has_trigger('public', 'boards', 'boards use database-owned timestamps');
-select has_trigger('public', 'tasks', 'tasks use database-owned timestamps');
+select has_trigger('public', 'boards', 'boards_set_row_timestamps', 'boards use database-owned timestamps');
+select has_trigger('public', 'tasks', 'tasks_set_row_timestamps', 'tasks use database-owned timestamps');
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -156,6 +156,8 @@ select is(
   0,
   'deleting a user cascades their profile'
 );
+
+insert into public.profiles(id,display_name) values ('25000000-0000-4000-8000-000000000003','Owner three');
 
 insert into public.boards (id, name, owner_id)
 values ('25000000-0000-4000-8000-000000000040', 'Independent cascade board', '25000000-0000-4000-8000-000000000003');
