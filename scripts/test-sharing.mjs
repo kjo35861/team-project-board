@@ -8,9 +8,10 @@ assert(['localhost','127.0.0.1','[::1]'].includes(new URL(url).hostname), 'Integ
 const makeClient = () => createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
 async function account(label) {
   const client = makeClient();
-  const {data,error}=await client.auth.signUp({email:`${label}-${randomUUID()}@example.com`,password:`T!${randomUUID()}`});
+  const email=`${label}-${randomUUID()}@example.com`,password=`T!${randomUUID()}`;
+  const {data,error}=await client.auth.signUp({email,password});
   assert.ifError(error); assert(data.session, 'Local test Auth must auto-confirm test accounts');
-  return {client,id:data.user.id};
+  return {client,id:data.user.id,email,password};
 }
 const owner=await account('owner'), member=await account('member'), outsider=await account('outsider');
 const rpc = async (user,name,args) => {const r=await user.client.rpc(name,args);assert.ifError(r.error);return r.data;};
@@ -49,3 +50,40 @@ await rpc(owner,'cancel_board_invite',{p_invite_id:canceled.invite_id});
 assert((await outsider.client.rpc('accept_board_invite',{p_token:canceled.token})).error,'Canceled invitation must fail');
 for(const user of [owner,member,outsider]) await user.client.auth.signOut();
 console.log('PASS: three real accounts, invite acceptance/reuse/cancellation, shared CRUD, outsider isolation, deletion policy, assignee cleanup, immutable author. Disposable local data only.');
+
+// Real recovery email and login test; all accounts and mail stay on the disposable stack.
+const recovery=await account('recovery');
+await recovery.client.auth.signOut({scope:'local'});
+const mailBase=process.env.INBUCKET_URL||'http://127.0.0.1:54324';
+assert(['localhost','127.0.0.1','[::1]'].includes(new URL(mailBase).hostname),'Mail access must be loopback');
+const sent=await recovery.client.auth.resetPasswordForEmail(recovery.email,{redirectTo:'http://127.0.0.1:5173/?recovery=1'});
+assert.ifError(sent.error);
+let message;
+for(let attempt=0;attempt<30;attempt++) {
+ const response=await fetch(`${mailBase}/api/v1/messages`);
+ assert(response.ok,'Local Mailpit API must be available');
+ const inbox=await response.json();
+ message=inbox.messages?.find(m=>m.To?.some(to=>to.Address===recovery.email));
+ if(message)break;
+ await new Promise(resolve=>setTimeout(resolve,500));
+}
+assert(message,'Recovery message was delivered to local Mailpit');
+const mail=await (await fetch(`${mailBase}/api/v1/message/${message.ID}`)).json();
+const links=`${mail.Text||''} ${mail.HTML||''}`.replaceAll('&amp;','&').match(/https?:[^\s"<>]+/g)||[];
+const link=links.find(link=>link.includes('/auth/v1/verify?'))?.replace(/[).]+$/,'');
+assert(link,'Recovery email includes verification link');
+assert(['localhost','127.0.0.1','[::1]'].includes(new URL(link).hostname),'Recovery verification must be loopback');
+const verified=await fetch(link,{redirect:'manual'});
+assert.equal(verified.status,302,'Recovery link verifies and redirects');
+const redirect=new URL(verified.headers.get('location'));
+const tokens=new URLSearchParams(redirect.hash.slice(1));
+assert(tokens.get('access_token')&&tokens.get('refresh_token'),'Recovery supplies an authenticated session');
+const receiver=makeClient();
+assert.ifError((await receiver.auth.setSession({access_token:tokens.get('access_token'),refresh_token:tokens.get('refresh_token')})).error);
+const newPassword=`N!${randomUUID()}`;
+assert.ifError((await receiver.auth.updateUser({password:newPassword})).error);
+await receiver.auth.signOut({scope:'local'});
+assert((await receiver.auth.signInWithPassword({email:recovery.email,password:recovery.password})).error,'Old password no longer signs in');
+assert.ifError((await receiver.auth.signInWithPassword({email:recovery.email,password:newPassword})).error);
+await receiver.auth.signOut({scope:'local'});
+console.log('PASS: local recovery mail delivery, verified email link, password update, old-password rejection and new-password sign-in. No production account or external mailbox used.');

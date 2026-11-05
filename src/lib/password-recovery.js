@@ -52,7 +52,7 @@ export function mountPasswordRecovery({client,root,onStart,onFinish}) {
     finally{lock(false);}
   });
   const params=new URLSearchParams(window.location.search);
-  if(params.get('recovery')==='1') show('request','복구 링크를 확인하고 있습니다. 만료된 경우 새 메일을 요청하세요.');
+  if(params.get('recovery')==='1') show('request','새 비밀번호 화면이 열리지 않으면 링크가 만료되었을 수 있습니다. 새 메일을 요청해 주세요.');
   return {
     get isActive(){return mode!==null;},
     handleEvent(event,session) {
