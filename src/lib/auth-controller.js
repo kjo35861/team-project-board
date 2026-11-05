@@ -1,3 +1,4 @@
+import { mountPasswordRecovery } from "./password-recovery.js";
 import { isEmailVerified } from "./auth-policy.js";
 
 function getAuthMessage(error) {
@@ -118,10 +119,23 @@ export function createAuthController({ client, onAuthenticated, onUnauthenticate
   screen.querySelector("#auth-back-to-login").addEventListener("click", () => showForm("login"));
   retryButton.addEventListener("click", () => { if (retryApp) void retryApp(); });
 
+  const recovery = mountPasswordRecovery({
+    client, root: screen.querySelector(".auth-card"),
+    onStart() {
+      for (const panel of [formPanel, confirmationPanel, configPanel, fatalPanel]) panel.hidden = true;
+      message.hidden = true;
+      screen.hidden = false;
+      const app = document.querySelector(".app-shell");
+      if (app) app.hidden = true;
+      currentUserId = "";
+    },
+    onFinish(text) { showForm("login", text, "info"); },
+  });
+
   handleAuthCallback();
   const initialRevision = sessionRevision;
-  const { data: subscriptionData } = client.auth.onAuthStateChange((_event, session) => { const revision = ++sessionRevision; queueMicrotask(() => { void processSession(session, revision); }); });
-  void client.auth.getSession().then(({ data, error }) => { if (initialRevision !== sessionRevision) return; if (error) { showForm("login", "저장된 로그인 상태를 복원하지 못했습니다. 다시 로그인해 주세요.", "warning"); return; } void processSession(data?.session || null, initialRevision); }).catch(() => { if (initialRevision === sessionRevision) showForm("login", "로그인 상태를 확인하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.", "warning"); });
+  const { data: subscriptionData } = client.auth.onAuthStateChange((event, session) => { const revision = ++sessionRevision; queueMicrotask(() => { if (!recovery.handleEvent(event, session)) void processSession(session, revision); }); });
+  void client.auth.getSession().then(({ data, error }) => { if (initialRevision !== sessionRevision || recovery.isActive) return; if (error) { showForm("login", "저장된 로그인 상태를 복원하지 못했습니다. 다시 로그인해 주세요.", "warning"); return; } void processSession(data?.session || null, initialRevision); }).catch(() => { if (initialRevision === sessionRevision) showForm("login", "로그인 상태를 확인하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.", "warning"); });
   return { screen, showAppError, showMessage(text, kind = "error") { setMessage(text, kind); }, subscription: subscriptionData?.subscription || null };
 }
 

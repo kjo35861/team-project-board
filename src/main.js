@@ -1,3 +1,4 @@
+import { mountProfileUI } from "./lib/profile-ui.js";
 import { mountWorkspaceUI } from "./lib/workspace-ui.js";
 import { createAuthController, mountConfigurationScreen } from "./lib/auth-controller.js";
 import { mountBoardManagementUI } from "./lib/board-management-ui.js";
@@ -24,6 +25,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
   let appInitialization = null;
   let taskBoard = null;
   let workspaceUI = null;
+  let profileUI = null;
   let authController;
   let boardManagementUI;
   let inviteAcceptanceUI;
@@ -131,6 +133,11 @@ if (!supabaseConfig.configured || !supabaseClient) {
     const taskModule = await appInitialization;
     if (!taskBoard) taskBoard = taskModule.mountTaskBoard({ client: supabaseClient, userId: user.id });
     updateProfile(user);
+    profileUI?.dispose();
+    profileUI = mountProfileUI({ client: supabaseClient, onSaved: () => {
+      const board = window.__TEAMBOARD_ACTIVE_SERVER_BOARD;
+      if (board) window.__TEAMBOARD_SET_ACTIVE_BOARD?.(board);
+    } });
 
     workspaceUI?.dispose();
     workspaceUI = mountWorkspaceUI({
@@ -151,6 +158,8 @@ if (!supabaseConfig.configured || !supabaseClient) {
     boardManagementUI?.dispose();
     inviteAcceptanceUI?.dispose();
     workspaceUI?.dispose();
+    profileUI?.dispose();
+    profileUI = null;
     workspaceUI = null;
     boardManagementUI = null;
     inviteAcceptanceUI = null;

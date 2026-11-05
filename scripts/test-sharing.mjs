@@ -14,6 +14,9 @@ async function account(label) {
 }
 const owner=await account('owner'), member=await account('member'), outsider=await account('outsider');
 const rpc = async (user,name,args) => {const r=await user.client.rpc(name,args);assert.ifError(r.error);return r.data;};
+await rpc(owner,'set_my_display_name',{p_display_name:'Owner name'});
+assert.equal((await rpc(owner,'get_my_profile'))[0].display_name,'Owner name');
+assert.equal((await rpc(member,'get_my_profile'))[0].display_name,null);
 const board=await rpc(owner,'create_board',{p_name:'Isolated integration board'});
 assert.equal((await member.client.from('boards').select('id').eq('id',board)).data.length,0);
 const invite=(await rpc(owner,'create_board_invite',{p_board_id:board}))[0];

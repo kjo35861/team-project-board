@@ -68,3 +68,4 @@ html, body, .sidebar, .main-area, .board-scroll, .task-list, dialog, .filter-men
   .task-complete-toggle { width: 20px; height: 20px; top: 18px; left: 3px; }
   .workspace-page .page-heading { align-items: flex-start; }
 }
+.profile-edit{margin-left:auto;flex:0 0 auto;padding:4px 6px;border:1px solid #454545;border-radius:4px;background:transparent;color:#aaa;font-size:10px;white-space:nowrap}.profile-edit:hover{color:#eee;background:#383838}.profile-copy{flex:1;overflow:hidden}.profile-copy strong{display:block;max-width:100%}.auth-text-button{padding:5px;border:0;background:transparent;color:#df9a90;font-size:12px;text-align:center}.auth-text-button:hover{text-decoration:underline}
