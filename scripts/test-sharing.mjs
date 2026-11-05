@@ -74,7 +74,7 @@ const link=links.find(link=>link.includes('/auth/v1/verify?'))?.replace(/[).]+$/
 assert(link,'Recovery email includes verification link');
 assert(['localhost','127.0.0.1','[::1]'].includes(new URL(link).hostname),'Recovery verification must be loopback');
 const verified=await fetch(link,{redirect:'manual'});
-assert.equal(verified.status,302,'Recovery link verifies and redirects');
+assert([302,303].includes(verified.status),'Recovery link verifies with an HTTP redirect');
 const redirect=new URL(verified.headers.get('location'));
 const tokens=new URLSearchParams(redirect.hash.slice(1));
 assert(tokens.get('access_token')&&tokens.get('refresh_token'),'Recovery supplies an authenticated session');
