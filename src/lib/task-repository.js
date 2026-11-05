@@ -93,24 +93,6 @@ function normalizeAssigneeId(input) {
   return raw.trim();
 }
 
-
-function normalizeTaskInput(input) {
-  const validation = validateTaskInput(input);
-  const fieldErrors = { ...validation.errors };
-  let assigneeId = null;
-
-  try {
-    assigneeId = normalizeAssigneeId(input);
-  } catch (error) {
-    Object.assign(fieldErrors, error.fieldErrors);
-  }
-
-  if (Object.keys(fieldErrors).length > 0) {
-    throw new TaskRepositoryInputError(fieldErrors);
-  }
-  return { value: validation.value, assigneeId };
-}
-
 /** Fetch only the authenticated user's RLS-visible tasks for one board. */
 export async function listTasks(client, boardId) {
   const requestedBoardId = normalizeBoardId(boardId);
@@ -147,12 +129,15 @@ export async function listTasks(client, boardId) {
  */
 export async function createTask(client, boardId, input) {
   const requestedBoardId = normalizeBoardId(boardId);
-  const { value, assigneeId } = normalizeTaskInput(input);
+  const validation = validateTaskInput(input);
+  if (!validation.valid) throw new TaskRepositoryInputError(validation.errors);
+  const assigneeId = normalizeAssigneeId(input);
 
   if (typeof client?.from !== "function") {
     throw new BoardRepositoryError("request_failed");
   }
   const userId = await requireAuthenticatedUser(client);
+  const value = validation.value;
 
   // Whitelist insert columns: IDs, creator, and timestamps are not accepted
   // from the caller. PostgreSQL supplies the task ID and timestamps.
@@ -185,134 +170,6 @@ export async function createTask(client, boardId, input) {
     || task.status !== value.status
     || task.assigneeId !== assigneeId
     || task.dueDate !== value.dueDate) {
-    throw new BoardRepositoryError("request_failed");
-  }
-  return task;
-}
-
-
-function normalizeTaskId(taskId) {
-  if (typeof taskId !== "string" || !taskId.trim()) {
-    throw new BoardRepositoryError("invalid_input");
-  }
-  return taskId.trim();
-}
-
-function normalizeTaskStatus(status) {
-  if (typeof status !== "string" || !TASK_STATUSES.has(status)) {
-    throw new TaskRepositoryInputError({ status: "진행 상태를 확인해 주세요." });
-  }
-  return status;
-}
-
-/**
- * Update one task within the requested board using only editable task fields.
- * Board membership and field-level permissions remain enforced by RLS.
- */
-export async function updateTask(client, boardId, taskId, input) {
-  const requestedBoardId = normalizeBoardId(boardId);
-  const requestedTaskId = normalizeTaskId(taskId);
-  const { value, assigneeId } = normalizeTaskInput(input);
-
-  if (typeof client?.from !== "function") {
-    throw new BoardRepositoryError("request_failed");
-  }
-  await requireAuthenticatedUser(client);
-  const updateValues = {
-    title: value.title,
-    description: value.description || null,
-    status: value.status,
-    assignee_id: assigneeId,
-    due_date: value.dueDate,
-  };
-
-  let result;
-  try {
-    result = await client
-      .from("tasks")
-      .update(updateValues)
-      .eq("id", requestedTaskId)
-      .eq("board_id", requestedBoardId)
-      .select(TASK_COLUMNS)
-      .single();
-  } catch (error) {
-    throw toRepositoryError(error);
-  }
-
-  if (result?.error) throw toRepositoryError(result.error);
-  const task = normalizeTask(result?.data, requestedBoardId);
-  if (task.id !== requestedTaskId
-    || task.title !== value.title
-    || task.description !== value.description
-    || task.status !== value.status
-    || task.assigneeId !== assigneeId
-    || task.dueDate !== value.dueDate) {
-    throw new BoardRepositoryError("request_failed");
-  }
-  return task;
-}
-
-/**
- * Update only a task's status while retaining the same authentication,
- * board/task scope, response validation, and safe error mapping as updateTask.
- */
-export async function updateTaskStatus(client, boardId, taskId, status) {
-  const requestedBoardId = normalizeBoardId(boardId);
-  const requestedTaskId = normalizeTaskId(taskId);
-  const normalizedStatus = normalizeTaskStatus(status);
-
-  if (typeof client?.from !== "function") {
-    throw new BoardRepositoryError("request_failed");
-  }
-  await requireAuthenticatedUser(client);
-
-  let result;
-  try {
-    result = await client
-      .from("tasks")
-      .update({ status: normalizedStatus })
-      .eq("id", requestedTaskId)
-      .eq("board_id", requestedBoardId)
-      .select(TASK_COLUMNS)
-      .single();
-  } catch (error) {
-    throw toRepositoryError(error);
-  }
-
-  if (result?.error) throw toRepositoryError(result.error);
-  const task = normalizeTask(result?.data, requestedBoardId);
-  if (task.id !== requestedTaskId || task.status !== normalizedStatus) {
-    throw new BoardRepositoryError("request_failed");
-  }
-  return task;
-}
-
-/** Delete one task within the requested board; RLS decides whether the user may delete it. */
-export async function deleteTask(client, boardId, taskId) {
-  const requestedBoardId = normalizeBoardId(boardId);
-  const requestedTaskId = normalizeTaskId(taskId);
-
-  if (typeof client?.from !== "function") {
-    throw new BoardRepositoryError("request_failed");
-  }
-  await requireAuthenticatedUser(client);
-
-  let result;
-  try {
-    result = await client
-      .from("tasks")
-      .delete()
-      .eq("id", requestedTaskId)
-      .eq("board_id", requestedBoardId)
-      .select(TASK_COLUMNS)
-      .single();
-  } catch (error) {
-    throw toRepositoryError(error);
-  }
-
-  if (result?.error) throw toRepositoryError(result.error);
-  const task = normalizeTask(result?.data, requestedBoardId);
-  if (task.id !== requestedTaskId) {
     throw new BoardRepositoryError("request_failed");
   }
   return task;

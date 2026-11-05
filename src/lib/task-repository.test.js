@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createTask, deleteTask, listTasks, updateTask, updateTaskStatus } from "./task-repository.js";
+import { createTask, listTasks } from "./task-repository.js";
 
 const ROW = {
   id: "task-1",
@@ -17,9 +17,6 @@ const ROW = {
 function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], error = null, thrown = null } = {}) {
   const calls = { from: vi.fn(), select: vi.fn(), eq: vi.fn(), order: vi.fn() };
   const builder = {
-    select: calls.select,
-    eq: calls.eq,
-    order: calls.order,
     then(resolve, reject) {
       if (thrown) return Promise.reject(thrown).then(resolve, reject);
       return Promise.resolve({ data, error }).then(resolve, reject);
@@ -35,11 +32,7 @@ function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], e
 
 function makeCreateClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
   const calls = { from: vi.fn(), insert: vi.fn(), select: vi.fn(), single: vi.fn() };
-  const builder = {
-    insert: calls.insert,
-    select: calls.select,
-    single: calls.single,
-  };
+  const builder = {};
   calls.from.mockReturnValue(builder);
   calls.insert.mockReturnValue(builder);
   calls.select.mockReturnValue(builder);
@@ -50,47 +43,6 @@ function makeCreateClient({ user = { id: "user-1" }, authError = null, data = RO
   const getUser = vi.fn().mockResolvedValue({ data: { user }, error: authError });
   return { client: { auth: { getUser }, from: calls.from }, calls, getUser };
 }
-
-function makeUpdateClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
-  const calls = { from: vi.fn(), update: vi.fn(), eq: vi.fn(), select: vi.fn(), single: vi.fn() };
-  const builder = {
-    update: calls.update,
-    eq: calls.eq,
-    select: calls.select,
-    single: calls.single,
-  };
-  calls.from.mockReturnValue(builder);
-  calls.update.mockReturnValue(builder);
-  calls.eq.mockReturnValue(builder);
-  calls.select.mockReturnValue(builder);
-  calls.single.mockImplementation(() => {
-    if (thrown) return Promise.reject(thrown);
-    return Promise.resolve({ data, error });
-  });
-  const getUser = vi.fn().mockResolvedValue({ data: { user }, error: authError });
-  return { client: { auth: { getUser }, from: calls.from }, calls, getUser };
-}
-
-function makeDeleteClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
-  const calls = { from: vi.fn(), delete: vi.fn(), eq: vi.fn(), select: vi.fn(), single: vi.fn() };
-  const builder = {
-    delete: calls.delete,
-    eq: calls.eq,
-    select: calls.select,
-    single: calls.single,
-  };
-  calls.from.mockReturnValue(builder);
-  calls.delete.mockReturnValue(builder);
-  calls.eq.mockReturnValue(builder);
-  calls.select.mockReturnValue(builder);
-  calls.single.mockImplementation(() => {
-    if (thrown) return Promise.reject(thrown);
-    return Promise.resolve({ data, error });
-  });
-  const getUser = vi.fn().mockResolvedValue({ data: { user }, error: authError });
-  return { client: { auth: { getUser }, from: calls.from }, calls, getUser };
-}
-
 
 describe("listTasks", () => {
   it("queries one RLS-visible board with stable due-date ordering and maps safe fields", async () => {
@@ -269,191 +221,6 @@ describe("createTask", () => {
 
     const mismatch = makeCreateClient({ data: { ...ROW, title: "다른 업무" } });
     await expect(createTask(mismatch.client, "board-1", { title: "새 업무" }))
-      .rejects.toMatchObject({ code: "request_failed" });
-  });
-});
-
-
-describe("updateTask", () => {
-  it("updates only editable fields within the requested task and board scope", async () => {
-    const returned = {
-      ...ROW,
-      title: "회의 준비",
-      description: null,
-      status: "todo",
-      assignee_id: null,
-      due_date: null,
-    };
-    const setup = makeUpdateClient({ data: returned });
-
-    await expect(updateTask(setup.client, " board-1 ", " task-1 ", {
-      title: "  회의 준비  ",
-      description: "   ",
-      status: "todo",
-      dueDate: "",
-      assigneeId: "",
-      id: "forged-id",
-      boardId: "other-board",
-      createdBy: "attacker",
-      createdAt: "forged-time",
-      updatedAt: "forged-time",
-    })).resolves.toMatchObject({
-      id: "task-1",
-      boardId: "board-1",
-      title: "회의 준비",
-      description: "",
-      status: "todo",
-      assigneeId: null,
-      dueDate: null,
-    });
-
-    expect(setup.getUser).toHaveBeenCalledOnce();
-    expect(setup.calls.from).toHaveBeenCalledWith("tasks");
-    expect(setup.calls.update).toHaveBeenCalledWith({
-      title: "회의 준비",
-      description: null,
-      status: "todo",
-      assignee_id: null,
-      due_date: null,
-    });
-    expect(setup.calls.eq).toHaveBeenNthCalledWith(1, "id", "task-1");
-    expect(setup.calls.eq).toHaveBeenNthCalledWith(2, "board_id", "board-1");
-    expect(setup.calls.select).toHaveBeenCalledWith("id,board_id,title,description,status,assignee_id,due_date,created_by,created_at,updated_at");
-    expect(setup.calls.single).toHaveBeenCalledOnce();
-  });
-
-  it("validates board, task, and editable fields before auth or database access", async () => {
-    const setup = makeUpdateClient();
-    const invalidInput = await updateTask(setup.client, "board-1", "task-1", {
-      title: " ",
-      status: "unknown",
-      dueDate: "2025-02-29",
-      assigneeId: " ",
-    }).catch((error) => error);
-
-    expect(invalidInput).toMatchObject({
-      code: "invalid_input",
-      fieldErrors: {
-        title: "업무 제목을 입력해 주세요.",
-        status: "진행 상태를 확인해 주세요.",
-        dueDate: "올바른 마감일을 선택해 주세요.",
-        assigneeId: "담당자를 확인해 주세요.",
-      },
-    });
-    expect(setup.getUser).not.toHaveBeenCalled();
-    expect(setup.calls.from).not.toHaveBeenCalled();
-
-    const invalidTask = makeUpdateClient();
-    await expect(updateTask(invalidTask.client, "board-1", " ", { title: "유효한 제목" }))
-      .rejects.toMatchObject({ code: "invalid_input" });
-    expect(invalidTask.getUser).not.toHaveBeenCalled();
-    expect(invalidTask.calls.from).not.toHaveBeenCalled();
-  });
-
-  it("blocks unauthenticated updates and maps permission and network failures safely", async () => {
-    const noUser = makeUpdateClient({ user: null });
-    await expect(updateTask(noUser.client, "board-1", "task-1", { title: "수정 업무" }))
-      .rejects.toMatchObject({ code: "unauthenticated" });
-    expect(noUser.calls.from).not.toHaveBeenCalled();
-
-    const forbidden = makeUpdateClient({ error: { code: "42501", message: "permission denied" } });
-    await expect(updateTask(forbidden.client, "board-1", "task-1", { title: "수정 업무" }))
-      .rejects.toMatchObject({ code: "forbidden" });
-
-    const network = makeUpdateClient({ thrown: new TypeError("Failed to fetch") });
-    await expect(updateTask(network.client, "board-1", "task-1", { title: "수정 업무" }))
-      .rejects.toMatchObject({ code: "network" });
-  });
-
-  it("rejects responses outside the requested task or board and mismatched fields", async () => {
-    const wrongTask = makeUpdateClient({ data: { ...ROW, id: "task-2", title: "수정 업무" } });
-    await expect(updateTask(wrongTask.client, "board-1", "task-1", { title: "수정 업무" }))
-      .rejects.toMatchObject({ code: "request_failed" });
-
-    const wrongBoard = makeUpdateClient({ data: { ...ROW, board_id: "board-2", title: "수정 업무" } });
-    await expect(updateTask(wrongBoard.client, "board-1", "task-1", { title: "수정 업무" }))
-      .rejects.toMatchObject({ code: "request_failed" });
-
-    const mismatch = makeUpdateClient({ data: { ...ROW, title: "다른 업무" } });
-    await expect(updateTask(mismatch.client, "board-1", "task-1", { title: "수정 업무" }))
-      .rejects.toMatchObject({ code: "request_failed" });
-  });
-});
-
-describe("updateTaskStatus", () => {
-  it("updates only status within the requested task and board scope", async () => {
-    const returned = { ...ROW, status: "done" };
-    const setup = makeUpdateClient({ data: returned });
-
-    await expect(updateTaskStatus(setup.client, "board-1", "task-1", "done"))
-      .resolves.toMatchObject({ id: "task-1", boardId: "board-1", status: "done" });
-
-    expect(setup.calls.update).toHaveBeenCalledWith({ status: "done" });
-    expect(setup.calls.eq).toHaveBeenNthCalledWith(1, "id", "task-1");
-    expect(setup.calls.eq).toHaveBeenNthCalledWith(2, "board_id", "board-1");
-    expect(setup.getUser).toHaveBeenCalledOnce();
-  });
-
-  it("rejects an invalid status before authentication or database access", async () => {
-    const setup = makeUpdateClient();
-    await expect(updateTaskStatus(setup.client, "board-1", "task-1", "blocked"))
-      .rejects.toMatchObject({
-        code: "invalid_input",
-        fieldErrors: { status: "진행 상태를 확인해 주세요." },
-      });
-    expect(setup.getUser).not.toHaveBeenCalled();
-    expect(setup.calls.from).not.toHaveBeenCalled();
-  });
-
-  it("rejects a mismatched status response", async () => {
-    const setup = makeUpdateClient({ data: { ...ROW, status: "todo" } });
-    await expect(updateTaskStatus(setup.client, "board-1", "task-1", "done"))
-      .rejects.toMatchObject({ code: "request_failed" });
-  });
-});
-
-describe("deleteTask", () => {
-  it("deletes one task within the requested task and board scope", async () => {
-    const setup = makeDeleteClient();
-
-    await expect(deleteTask(setup.client, " board-1 ", " task-1 "))
-      .resolves.toMatchObject({ id: "task-1", boardId: "board-1" });
-
-    expect(setup.getUser).toHaveBeenCalledOnce();
-    expect(setup.calls.from).toHaveBeenCalledWith("tasks");
-    expect(setup.calls.delete).toHaveBeenCalledOnce();
-    expect(setup.calls.eq).toHaveBeenNthCalledWith(1, "id", "task-1");
-    expect(setup.calls.eq).toHaveBeenNthCalledWith(2, "board_id", "board-1");
-    expect(setup.calls.select).toHaveBeenCalledWith("id,board_id,title,description,status,assignee_id,due_date,created_by,created_at,updated_at");
-  });
-
-  it("blocks unauthenticated, invalid, forbidden, and network deletion attempts safely", async () => {
-    const invalid = makeDeleteClient();
-    await expect(deleteTask(invalid.client, "board-1", " "))
-      .rejects.toMatchObject({ code: "invalid_input" });
-    expect(invalid.getUser).not.toHaveBeenCalled();
-
-    const noUser = makeDeleteClient({ user: null });
-    await expect(deleteTask(noUser.client, "board-1", "task-1"))
-      .rejects.toMatchObject({ code: "unauthenticated" });
-    expect(noUser.calls.from).not.toHaveBeenCalled();
-
-    const forbidden = makeDeleteClient({ error: { code: "42501", message: "permission denied" } });
-    await expect(deleteTask(forbidden.client, "board-1", "task-1"))
-      .rejects.toMatchObject({ code: "forbidden" });
-
-    const network = makeDeleteClient({ thrown: new TypeError("Failed to fetch") });
-    await expect(deleteTask(network.client, "board-1", "task-1"))
-      .rejects.toMatchObject({ code: "network" });
-  });
-
-  it("rejects a response outside the requested board or task", async () => {
-    const wrongBoard = makeDeleteClient({ data: { ...ROW, board_id: "board-2" } });
-    await expect(deleteTask(wrongBoard.client, "board-1", "task-1"))
-      .rejects.toMatchObject({ code: "request_failed" });
-
-    const wrongTask = makeDeleteClient({ data: { ...ROW, id: "task-2" } });
-    await expect(deleteTask(wrongTask.client, "board-1", "task-1"))
       .rejects.toMatchObject({ code: "request_failed" });
   });
 });
