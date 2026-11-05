@@ -53,6 +53,18 @@ describe("mountBoardManagementUI", () => {
     ui.dispose();
   });
 
+  it("updates sidebar highlighting on click and reopens an already selected board", async () => {
+    const { root, selected, ui } = setup();
+    await settle();
+    root.querySelectorAll('.shared-board-name')[1].click();
+    expect(root.querySelector('[aria-current="true"]').textContent).toBe('Beta');
+    const before = selected.mock.calls.length;
+    root.querySelectorAll('.shared-board-name')[1].click();
+    expect(selected.mock.calls.length).toBe(before+1);
+    expect(selected).toHaveBeenLastCalledWith(BOARD_B, expect.objectContaining({reason:'user-selection'}));
+    ui.dispose();
+  });
+
   it("shows a safe retry state and clears selection when the list becomes empty", async () => {
     const { root, repos, ui } = setup({ repository: { listBoards: vi.fn().mockRejectedValueOnce(new Error("private output")).mockResolvedValueOnce([]) } });
     await settle();

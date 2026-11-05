@@ -20,7 +20,7 @@ function element(tag, className, text = "") {
 }
 
 /** Mount server-backed boards, owner management, members and invitation UI. */
-export function mountBoardManagementUI({ client, userId, root, repository = {}, onBoardSelected = () => {} }) {
+export function mountBoardManagementUI({ client, userId, root, repository = {}, onBoardSelected = () => {}, onListState = () => {} }) {
   if (!root) throw new TypeError("A shared-board root is required.");
 
   const content = element("div", "shared-board-management");
@@ -130,7 +130,7 @@ export function mountBoardManagementUI({ client, userId, root, repository = {}, 
       name.type = "button";
       if (selected) name.setAttribute("aria-current", "true");
       name.setAttribute("aria-label", `공유 보드 선택: ${board.name}`);
-      name.addEventListener("click", () => selection.select(board.id));
+      name.addEventListener("click", () => selectBoard(board.id));
       const role = element("span", "shared-board-role", board.owner_id === userId ? "소유자" : "구성원");
       const summary = element("div", "shared-board-summary");
       summary.append(name, role);
@@ -213,6 +213,7 @@ export function mountBoardManagementUI({ client, userId, root, repository = {}, 
     client,
     repository: repository.listBoards || defaultListBoards,
     render(next) {
+      onListState(next);
       listState = next.status;
       renderList(next.boards);
     },
@@ -265,6 +266,7 @@ export function mountBoardManagementUI({ client, userId, root, repository = {}, 
 
   createButton.addEventListener("click", () => openDialog("create"));
   cancelButton.addEventListener("click", closeDialog);
+  dialog.addEventListener("cancel", (event) => { if (mutationState.busy) event.preventDefault(); });
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog && !mutationState.busy) closeDialog();
   });
@@ -286,17 +288,21 @@ export function mountBoardManagementUI({ client, userId, root, repository = {}, 
     if (succeeded) closeDialog();
   });
 
+  function selectBoard(boardId) {
+    const result = selection.select(boardId);
+    if (!result.valid) return false;
+    if (!result.changed) onBoardSelected(result.board, { revision: result.revision, reason: "user-selection" });
+    clearExpandedPanels();
+    expandedMemberBoardId = null;
+    renderList(selection.getBoards());
+    return true;
+  }
+
   void listController.load();
   return {
     reload: () => listController.refresh(),
-    selectBoard(boardId) {
-      const result = selection.select(boardId);
-      if (!result.valid) return false;
-      clearExpandedPanels();
-      expandedMemberBoardId = null;
-      renderList(selection.getBoards());
-      return true;
-    },
+    selectBoard,
+    openCreateDialog: () => openDialog("create"),
     getActiveBoard: () => selection.getActive(),
     getSelectionRevision: () => selection.getRevision(),
     dispose() {

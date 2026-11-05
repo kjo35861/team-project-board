@@ -222,8 +222,8 @@ export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAM
     const assignee = member
       ? `<span class="avatar ${member.avatarClass}" aria-hidden="true">${escapeHtml(member.name.slice(0, 1))}</span><span>${escapeHtml(member.name)}</span>`
       : '<span class="avatar avatar-unassigned" aria-hidden="true">?</span><span>담당자 미정</span>';
-    const disabled = (state.busy || state.busyTaskIds.has(task.id)) ? " disabled" : "";
-    return `<article class="task-card${task.status === "done" ? " task-card-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-card-top"><label class="status-control"><span class="visually-hidden">업무 상태 변경</span><select data-task-status="${escapeHtml(task.id)}" aria-label="업무 상태 변경: ${escapeHtml(STATUS_LABELS[task.status])}"${disabled}>${STATUSES.map(({ id, label }) => `<option value="${id}"${task.status === id ? " selected" : ""}>${label}</option>`).join("")}</select></label><details class="card-menu"><summary class="card-more" aria-label="${escapeHtml(task.title)} 업무 메뉴">···</summary><div class="card-menu-content"><button type="button" data-edit-task="${escapeHtml(task.id)}"${disabled}>수정</button><button type="button" class="menu-danger" data-delete-task="${escapeHtml(task.id)}"${disabled}${task.createdBy === userId || state.board?.owner_id === userId ? "" : " hidden"}>삭제</button></div></details></div><h3>${escapeHtml(task.title)}</h3>${description}<div class="task-footer"><span class="due-date${overdue ? " due-date-overdue" : ""}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg>${due}${overdue ? '<span class="overdue-label">지연</span>' : ""}</span><span class="assignee">${assignee}</span></div></article>`;
+    const disabled = (state.busy || state.busyTaskIds.size > 0) ? " disabled" : "";
+    return `<article class="task-card${task.status === "done" ? " task-card-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-card-top"><label class="status-control"><span class="visually-hidden">업무 상태 변경</span><select data-task-status="${escapeHtml(task.id)}" aria-label="업무 상태 변경: ${escapeHtml(STATUS_LABELS[task.status])}"${disabled}>${STATUSES.map(({ id, label }) => `<option value="${id}"${task.status === id ? " selected" : ""}>${label}</option>`).join("")}</select></label><details class="card-menu"><summary class="card-more" aria-label="${escapeHtml(task.title)} 업무 메뉴">···</summary><div class="card-menu-content"><button type="button" data-edit-task="${escapeHtml(task.id)}"${disabled}>수정</button><button type="button" class="menu-danger" data-delete-task="${escapeHtml(task.id)}"${disabled}${task.createdBy === userId || state.board?.owner_id === userId ? "" : " hidden"}>삭제</button></div></details></div><button type="button" class="task-complete-toggle" data-toggle-complete="${escapeHtml(task.id)}" aria-label="${escapeHtml(task.title)}: ${task.status === "done" ? "완료 취소" : "완료로 표시"}" aria-pressed="${task.status === "done"}"${disabled}>${task.status === "done" ? "✓" : ""}</button><h3>${escapeHtml(task.title)}</h3>${description}<div class="task-footer"><span class="due-date${overdue ? " due-date-overdue" : ""}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg>${due}${overdue ? '<span class="overdue-label">지연</span>' : ""}</span><span class="assignee">${assignee}</span></div></article>`;
   }
 
   function syncFilters() {
@@ -249,7 +249,7 @@ export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAM
       if (selected) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
     });
     breadcrumbBoardName.textContent = boardName;
-    document.title = `${boardName} | 팀 프로젝트 협업 보드`;
+    if (document.querySelector("#workspace-page")?.hidden !== false) document.title = `${boardName} | 팀 프로젝트 협업 보드`;
 
     const tasks = visibleTasks();
     const filtered = syncFilters() || taskView !== "all";
@@ -287,7 +287,10 @@ export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAM
       else if (state.tasks.length === 0 && id === "todo") taskLists.get(id).innerHTML = '<div class="empty-state empty-state-first"><span>아직 등록된 업무가 없어요.</span><button type="button" data-add-task data-status="todo">첫 업무 추가</button></div>';
       else taskLists.get(id).innerHTML = '<p class="empty-state">이 상태에 업무가 없습니다.</p>';
     }
-    $$('[data-add-task]').forEach((button) => { button.disabled = !state.board || state.status !== "ready" || state.rosterError || state.busy; });
+    $$('[data-add-task]').forEach((button) => { button.disabled = !state.board || state.status !== "ready" || state.rosterError || state.busy || state.busyTaskIds.size > 0; });
+    taskForm.querySelectorAll("input, textarea, select, button").forEach(control => { control.disabled = state.busy; });
+    const refresh = document.querySelector("[data-refresh-tasks]");
+    if (refresh) refresh.disabled = state.busy || state.busyTaskIds.size > 0 || state.status === "loading";
     sortButton.setAttribute("aria-pressed", String(sortDirection === "desc"));
     sortButton.setAttribute("aria-label", sortDirection === "asc" ? "마감일 빠른 순 정렬 중. 늦은 순으로 바꾸기" : "마감일 늦은 순 정렬 중. 빠른 순으로 바꾸기");
   }
@@ -296,6 +299,7 @@ export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAM
     syncSideNavigation();
     const requestId = ++state.requestId;
     state.board = board ? { ...board } : null;
+    taskView = "all";
     state.revision += 1;
     state.busy = false;
     state.busyTaskIds = new Set();
@@ -412,6 +416,7 @@ export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAM
     const requestRevision = state.revision;
     state.busyTaskIds.add(taskId);
     select.disabled = true;
+    render();
     try {
       const saved = await updateTaskStatus(client, boardId, taskId, status);
       if (requestRevision !== state.revision || state.board?.id !== boardId) return;
@@ -474,6 +479,12 @@ export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAM
     if (target.closest("[data-retry-tasks]")) { void loadBoard(state.board, { revision: state.revision }); return; }
     const addTask = target.closest("[data-add-task]");
     if (addTask) { openTaskDialog(null, addTask.dataset.status || "todo"); return; }
+    const complete = target.closest("[data-toggle-complete]");
+    if (complete) {
+      const task = state.tasks.find(item => item.id === complete.dataset.toggleComplete);
+      if (task) void changeTaskStatus(task.id, task.status === "done" ? "todo" : "done", complete);
+      return;
+    }
     const editTask = target.closest("[data-edit-task]");
     if (editTask) {
       editTask.closest("details")?.removeAttribute("open");

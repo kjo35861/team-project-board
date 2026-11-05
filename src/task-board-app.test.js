@@ -94,6 +94,17 @@ describe('server task screen', () => {
     expect(document.querySelectorAll('[data-task-id]').length).toBe(4);
     vi.useRealTimers();
   });
+  it('completion button persists status and returns to the old status after failure', async () => {
+    await app.selectBoard(board);
+    tasks.updateTaskStatus.mockResolvedValueOnce({ ...task, status:'done' });
+    click('[data-toggle-complete="t"]'); await flush();
+    expect(tasks.updateTaskStatus).toHaveBeenCalledWith({},'a','t','done');
+    expect(document.querySelector('[data-toggle-complete="t"]').getAttribute('aria-pressed')).toBe('true');
+    tasks.updateTaskStatus.mockRejectedValueOnce({code:'network'});
+    click('[data-toggle-complete="t"]'); await flush();
+    expect(document.querySelector('[data-toggle-complete="t"]').getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('[data-task-list="done"] [data-task-id="t"]')).not.toBeNull();
+  });
   it('keeps card on failed deletion, supports retry and empty board', async () => {
     tasks.listTasks.mockRejectedValueOnce({ code:'network' }); await app.selectBoard(board);
     expect(document.querySelector('[data-retry-tasks]')).not.toBeNull();

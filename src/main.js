@@ -1,3 +1,4 @@
+import { mountWorkspaceUI } from "./lib/workspace-ui.js";
 import { createAuthController, mountConfigurationScreen } from "./lib/auth-controller.js";
 import { mountBoardManagementUI } from "./lib/board-management-ui.js";
 import { mountInviteAcceptanceUI, mountInviteCaptureNotice } from "./lib/board-invite-acceptance-ui.js";
@@ -22,6 +23,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
 } else {
   let appInitialization = null;
   let taskBoard = null;
+  let workspaceUI = null;
   let authController;
   let boardManagementUI;
   let inviteAcceptanceUI;
@@ -42,6 +44,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
     document.querySelector(".sidebar-toggle")?.setAttribute("aria-expanded", "false");
     window.__TEAMBOARD_ACTIVE_SERVER_BOARD = board ? { ...board } : null;
     window.__TEAMBOARD_SET_ACTIVE_BOARD?.(board, metadata);
+    workspaceUI?.onBoardSelected(board, metadata);
     const active = document.querySelector("#server-board-active");
     if (!active) return;
     active.hidden = false;
@@ -87,6 +90,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
       userId: user.id,
       root: section.querySelector("#server-board-list"),
       onBoardSelected: showActiveServerBoard,
+      onListState: (state) => workspaceUI?.update(state),
     });
   }
 
@@ -128,6 +132,13 @@ if (!supabaseConfig.configured || !supabaseClient) {
     if (!taskBoard) taskBoard = taskModule.mountTaskBoard({ client: supabaseClient, userId: user.id });
     updateProfile(user);
 
+    workspaceUI?.dispose();
+    workspaceUI = mountWorkspaceUI({
+      userId: user.id,
+      onSelect: (id) => boardManagementUI?.selectBoard(id) || false,
+      onCreate: () => boardManagementUI?.openCreateDialog(),
+      onRefresh: () => boardManagementUI?.reload(),
+    });
     mountRemoteBoardManagement(user);
     mountInviteFlow();
     if (appShell) appShell.hidden = false;
@@ -139,6 +150,8 @@ if (!supabaseConfig.configured || !supabaseClient) {
     resetInProgress = true;
     boardManagementUI?.dispose();
     inviteAcceptanceUI?.dispose();
+    workspaceUI?.dispose();
+    workspaceUI = null;
     boardManagementUI = null;
     inviteAcceptanceUI = null;
     window.__TEAMBOARD_SET_ACTIVE_BOARD?.(null);
