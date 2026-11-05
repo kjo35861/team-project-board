@@ -36,6 +36,19 @@ describe("auth controller", () => {
     expect(onUnauthenticated).toHaveBeenCalledTimes(1);
   });
 
+  it("suspends existing board state when recovery starts and does not open the app", async () => {
+    const client = createClient();
+    const onAuthenticated = vi.fn(), onRecoveryStarted = vi.fn();
+    createAuthController({ client, onAuthenticated, onRecoveryStarted });
+    await tick();
+    client.emit("PASSWORD_RECOVERY", { user: { id: "u1", email_confirmed_at: "2026-01-01" } });
+    await tick();
+    expect(onRecoveryStarted).toHaveBeenCalledOnce();
+    expect(onAuthenticated).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-recovery-password]').hidden).toBe(false);
+    expect(document.querySelector('.app-shell').hidden).toBe(true);
+  });
+
   it("renders explicit setup guidance without a board fallback", () => {
     const screen = mountConfigurationScreen("not-configured");
     expect(screen.querySelector("#auth-config-panel").hidden).toBe(false);

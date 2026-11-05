@@ -34,7 +34,7 @@ function createScreen() {
   return screen;
 }
 
-export function createAuthController({ client, onAuthenticated, onUnauthenticated }) {
+export function createAuthController({ client, onAuthenticated, onUnauthenticated, onRecoveryStarted = () => {} }) {
   const screen = createScreen(); document.body.prepend(screen);
   const formPanel = screen.querySelector("#auth-form-panel");
   const confirmationPanel = screen.querySelector("#auth-confirmation-panel");
@@ -128,6 +128,7 @@ export function createAuthController({ client, onAuthenticated, onUnauthenticate
       const app = document.querySelector(".app-shell");
       if (app) app.hidden = true;
       currentUserId = "";
+      onRecoveryStarted();
     },
     onFinish(text) { showForm("login", text, "info"); },
   });

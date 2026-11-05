@@ -152,27 +152,32 @@ if (!supabaseConfig.configured || !supabaseClient) {
     if (signOutButton) signOutButton.hidden = false;
   }
 
-  function resetAuthenticatedApp() {
-    if (resetInProgress) return;
-    resetInProgress = true;
+  function suspendAuthenticatedApp() {
     boardManagementUI?.dispose();
     inviteAcceptanceUI?.dispose();
     workspaceUI?.dispose();
     profileUI?.dispose();
-    profileUI = null;
-    workspaceUI = null;
+    taskBoard?.dispose();
     boardManagementUI = null;
     inviteAcceptanceUI = null;
-    window.__TEAMBOARD_SET_ACTIVE_BOARD?.(null);
+    workspaceUI = null;
+    profileUI = null;
+    taskBoard = null;
     window.__TEAMBOARD_ACTIVE_SERVER_BOARD = null;
-    clearPendingInvite();
+    delete window.__TEAMBOARD_AUTH_USER_ID;
     if (appShell) appShell.hidden = true;
     if (signOutButton) signOutButton.hidden = true;
-    delete window.__TEAMBOARD_AUTH_USER_ID;
+  }
+
+  function resetAuthenticatedApp() {
+    if (resetInProgress) return;
+    resetInProgress = true;
+    suspendAuthenticatedApp();
+    clearPendingInvite();
     window.location.replace(window.location.pathname);
   }
 
-  authController = createAuthController({ client: supabaseClient, onAuthenticated: initializeAuthenticatedApp, onUnauthenticated: resetAuthenticatedApp });
+  authController = createAuthController({ client: supabaseClient, onAuthenticated: initializeAuthenticatedApp, onUnauthenticated: resetAuthenticatedApp, onRecoveryStarted: suspendAuthenticatedApp });
   signOutButton?.addEventListener("click", async () => {
     if (signOutButton.disabled) return;
     signOutButton.disabled = true;
