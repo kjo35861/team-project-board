@@ -20,9 +20,16 @@ export function createBoardSelection({ onChange = () => {} } = {}) {
 
   return {
     update(nextBoards) {
+      const previous = activeBoard();
       boards = Array.isArray(nextBoards) ? nextBoards.filter((board) => typeof board?.id === "string") : [];
       const current = activeBoard();
-      if (current) return { board: current, changed: false, revision };
+      if (current) {
+        if (previous?.name !== current.name || previous?.owner_id !== current.owner_id) {
+          revision += 1;
+          onChange({ board: { ...current }, previousId: activeBoardId, revision, reason: "board-update" });
+        }
+        return { board: current, changed: false, revision };
+      }
       return setActive(boards[0] || null, "list-refresh");
     },
     select(boardId) {

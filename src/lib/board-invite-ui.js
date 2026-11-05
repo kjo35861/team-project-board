@@ -1,3 +1,4 @@
+import * as memberRepository from "./member-repository.js";
 import { createBoardInviteController } from "./board-invite-controller.js";
 
 function element(tag, className, text = "") {
@@ -31,6 +32,7 @@ function formatDate(value) {
 export function mountBoardInviteUI({
   client,
   boardId,
+  repository = {},
   root,
   confirm = (message) => window.confirm(message),
   clipboard = globalThis.navigator?.clipboard,
@@ -142,7 +144,7 @@ export function mountBoardInviteUI({
     }
   }
 
-  controller = createBoardInviteController({ client, boardId, render });
+  controller = createBoardInviteController({ client, boardId, render, repository: { ...memberRepository, ...repository } });
   createButton.addEventListener("click", () => controller.create());
   copyButton.addEventListener("click", copyLink);
   void controller.load();

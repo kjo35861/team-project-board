@@ -1,3 +1,4 @@
+import * as memberRepository from "./member-repository.js";
 import { createBoardMemberController } from "./board-member-controller.js";
 
 function element(tag, className, text = "") {
@@ -19,6 +20,7 @@ export function mountBoardMemberUI({
   client,
   boardId,
   currentUserId,
+  repository = {},
   root,
   onBoardLeft,
   confirm = (message) => window.confirm(message),
@@ -100,6 +102,7 @@ export function mountBoardMemberUI({
   }
 
   controller = createBoardMemberController({
+    repository: { ...memberRepository, ...repository },
     client,
     boardId,
     currentUserId,

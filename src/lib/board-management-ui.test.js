@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mountBoardManagementUI } from "./board-management-ui.js";
 
@@ -45,9 +46,9 @@ describe("mountBoardManagementUI", () => {
     await settle();
     expect(root.textContent).toContain("Alpha");
     expect(root.querySelector('[aria-current="true"]')?.textContent).toBe("Alpha");
-    expect(selected).toHaveBeenCalledWith({ id: BOARD_A.id, name: BOARD_A.name, owner_id: BOARD_A.owner_id });
+    expect(selected).toHaveBeenCalledWith({ id: BOARD_A.id, name: BOARD_A.name, owner_id: BOARD_A.owner_id }, expect.objectContaining({ revision: 1 }));
     expect(ui.selectBoard(BOARD_B.id)).toBe(true);
-    expect(selected).toHaveBeenLastCalledWith({ id: BOARD_B.id, name: BOARD_B.name, owner_id: BOARD_B.owner_id });
+    expect(selected).toHaveBeenLastCalledWith({ id: BOARD_B.id, name: BOARD_B.name, owner_id: BOARD_B.owner_id }, expect.objectContaining({ revision: 2 }));
     expect(root.querySelector('[aria-current="true"]')?.textContent).toBe("Beta");
     ui.dispose();
   });
@@ -75,7 +76,7 @@ describe("mountBoardManagementUI", () => {
     expect(repos.listBoardMembers).toHaveBeenCalledWith({ id: "client" }, BOARD_A.id);
     expect(repos.listBoardInvites).toHaveBeenCalledWith({ id: "client" }, BOARD_A.id);
     ui.selectBoard(BOARD_B.id);
-    root.querySelector(".shared-board-action").click();
+    root.querySelectorAll(".shared-board-item")[1].querySelector(".shared-board-action").click();
     await settle();
     expect(root.textContent).toContain("구성원");
     expect(root.textContent).not.toContain("초대 링크 만들기");

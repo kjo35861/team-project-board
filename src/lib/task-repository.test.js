@@ -22,6 +22,7 @@ function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], e
       return Promise.resolve({ data, error }).then(resolve, reject);
     },
   };
+  Object.assign(builder, calls);
   calls.from.mockReturnValue(builder);
   calls.select.mockReturnValue(builder);
   calls.eq.mockReturnValue(builder);
@@ -33,6 +34,7 @@ function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], e
 function makeCreateClient({ user = { id: "user-1" }, authError = null, data = ROW, error = null, thrown = null } = {}) {
   const calls = { from: vi.fn(), insert: vi.fn(), select: vi.fn(), single: vi.fn() };
   const builder = {};
+  Object.assign(builder, calls);
   calls.from.mockReturnValue(builder);
   calls.insert.mockReturnValue(builder);
   calls.select.mockReturnValue(builder);

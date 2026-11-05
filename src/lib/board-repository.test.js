@@ -18,6 +18,7 @@ function makeClient({ user = { id: "user-1" }, authError = null, queryResult = {
         : Promise.resolve(queryResult).then(resolve, reject);
     },
   };
+  Object.assign(builder, { select, order });
   order.mockImplementation(() => builder);
   select.mockImplementation(() => builder);
   from.mockImplementation(() => builder);

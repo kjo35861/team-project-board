@@ -9,14 +9,11 @@ import {
 } from "./lib/task-repository.js";
 import { validateTaskInput } from "./lib/task-validation.js";
 
-(() => {
-  "use strict";
+export function mountTaskBoard({ client = supabaseClient, userId = window.__TEAMBOARD_AUTH_USER_ID } = {}) {
 
-  const userId = typeof window.__TEAMBOARD_AUTH_USER_ID === "string"
-    ? window.__TEAMBOARD_AUTH_USER_ID.trim()
-    : "";
-  if (!userId || !supabaseClient) return;
-
+  if (!userId || !client) return;
+  const events = new AbortController();
+  const on = (target, type, listener) => target.addEventListener(type, listener, { signal: events.signal });
   const STATUSES = [
     { id: "todo", label: "할 일" },
     { id: "in_progress", label: "진행 중" },
@@ -63,11 +60,18 @@ import { validateTaskInput } from "./lib/task-validation.js";
     busy: false,
     rosterError: false,
   };
+  let taskView = "all";
   let activeStatuses = null;
   let activeAssignees = null;
   let sortDirection = "asc";
   let editingTaskId = null;
   let toastTimer = null;
+
+  function syncSideNavigation() {
+    const sidebar = document.querySelector("#app-sidebar");
+    if (sidebar) sidebar.inert = Boolean(window.matchMedia?.("(max-width: 760px)").matches)
+      && !document.body.classList.contains("sidebar-open");
+  }
 
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => ({
@@ -165,7 +169,10 @@ import { validateTaskInput } from "./lib/task-validation.js";
     const query = searchInput.value.trim().toLocaleLowerCase("ko-KR");
     return state.tasks.filter((task) => {
       const text = `${task.title}\n${task.description}`.toLocaleLowerCase("ko-KR");
-      return (!query || text.includes(query))
+      const today = koreanToday();
+      const inView = taskView === "all" || (task.status !== "done" && task.dueDate
+        && (taskView === "today" ? task.dueDate <= today : task.dueDate > today));
+      return inView && (!query || text.includes(query))
         && (activeStatuses === null || activeStatuses.has(task.status))
         && (activeAssignees === null || activeAssignees.has(task.assigneeId || "__unassigned__"));
     }).sort(taskCompare);
@@ -173,9 +180,11 @@ import { validateTaskInput } from "./lib/task-validation.js";
 
   function renderAssigneeControls() {
     const members = [...memberMap().values()];
+    const selectedAssignee = taskAssigneeInput.value;
     taskAssigneeInput.replaceChildren(new Option("담당자 미정", ""));
     for (const member of members) taskAssigneeInput.append(new Option(member.name, member.userId));
 
+    taskAssigneeInput.value = selectedAssignee;
     const fieldset = $("#assignee-filter-popover fieldset");
     if (!fieldset) return;
     fieldset.replaceChildren();
@@ -195,7 +204,7 @@ import { validateTaskInput } from "./lib/task-validation.js";
       text.textContent = option.label;
       label.append(input, text);
       fieldset.append(label);
-      input.addEventListener("change", () => {
+      on(input, "change", () => {
         const selected = new Set($$("[data-assignee-filter]").filter((item) => item.checked).map((item) => item.value));
         activeAssignees = selected.size === options.length ? null : selected;
         render();
@@ -213,8 +222,8 @@ import { validateTaskInput } from "./lib/task-validation.js";
     const assignee = member
       ? `<span class="avatar ${member.avatarClass}" aria-hidden="true">${escapeHtml(member.name.slice(0, 1))}</span><span>${escapeHtml(member.name)}</span>`
       : '<span class="avatar avatar-unassigned" aria-hidden="true">?</span><span>담당자 미정</span>';
-    const disabled = state.busyTaskIds.has(task.id) ? " disabled" : "";
-    return `<article class="task-card${task.status === "done" ? " task-card-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-card-top"><label class="status-control"><span class="visually-hidden">업무 상태 변경</span><select data-task-status="${escapeHtml(task.id)}" aria-label="업무 상태 변경: ${escapeHtml(STATUS_LABELS[task.status])}"${disabled}>${STATUSES.map(({ id, label }) => `<option value="${id}"${task.status === id ? " selected" : ""}>${label}</option>`).join("")}</select></label><details class="card-menu"><summary class="card-more" aria-label="${escapeHtml(task.title)} 업무 메뉴">···</summary><div class="card-menu-content"><button type="button" data-edit-task="${escapeHtml(task.id)}">수정</button><button type="button" class="menu-danger" data-delete-task="${escapeHtml(task.id)}">삭제</button></div></details></div><h3>${escapeHtml(task.title)}</h3>${description}<div class="task-footer"><span class="due-date${overdue ? " due-date-overdue" : ""}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg>${due}${overdue ? '<span class="overdue-label">지연</span>' : ""}</span><span class="assignee">${assignee}</span></div></article>`;
+    const disabled = (state.busy || state.busyTaskIds.has(task.id)) ? " disabled" : "";
+    return `<article class="task-card${task.status === "done" ? " task-card-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-card-top"><label class="status-control"><span class="visually-hidden">업무 상태 변경</span><select data-task-status="${escapeHtml(task.id)}" aria-label="업무 상태 변경: ${escapeHtml(STATUS_LABELS[task.status])}"${disabled}>${STATUSES.map(({ id, label }) => `<option value="${id}"${task.status === id ? " selected" : ""}>${label}</option>`).join("")}</select></label><details class="card-menu"><summary class="card-more" aria-label="${escapeHtml(task.title)} 업무 메뉴">···</summary><div class="card-menu-content"><button type="button" data-edit-task="${escapeHtml(task.id)}"${disabled}>수정</button><button type="button" class="menu-danger" data-delete-task="${escapeHtml(task.id)}"${disabled}${task.createdBy === userId || state.board?.owner_id === userId ? "" : " hidden"}>삭제</button></div></details></div><h3>${escapeHtml(task.title)}</h3>${description}<div class="task-footer"><span class="due-date${overdue ? " due-date-overdue" : ""}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg>${due}${overdue ? '<span class="overdue-label">지연</span>' : ""}</span><span class="assignee">${assignee}</span></div></article>`;
   }
 
   function syncFilters() {
@@ -230,14 +239,40 @@ import { validateTaskInput } from "./lib/task-validation.js";
   }
 
   function render() {
-    renderAssigneeControls();
     const boardName = state.board?.name || "공유 보드 선택";
-    boardTitle.textContent = boardName;
+    boardTitle.textContent = taskView === "today" ? "오늘" : taskView === "upcoming" ? "다음" : state.board ? boardName : "관리함";
+    const count = $("#inbox-count");
+    if (count) count.textContent = String(state.tasks.filter((task) => task.status !== "done").length);
+    $$("[data-task-view]").forEach((button) => {
+      const selected = button.dataset.taskView === taskView;
+      button.classList.toggle("is-active", selected);
+      if (selected) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
+    });
     breadcrumbBoardName.textContent = boardName;
     document.title = `${boardName} | 팀 프로젝트 협업 보드`;
 
     const tasks = visibleTasks();
-    const filtered = syncFilters();
+    const filtered = syncFilters() || taskView !== "all";
+    const empty = $("#inbox-empty");
+    if (empty) {
+      const noBoard = !state.board;
+      const showEmpty = noBoard || (state.status === "ready" && state.tasks.length === 0 && !filtered);
+      empty.querySelector("h2").textContent = noBoard ? "함께할 프로젝트를 시작하세요" : "지금 정리하고, 함께 시작하세요";
+      empty.querySelector("p").innerHTML = noBoard ? "프로젝트를 만들거나 초대를 수락하고<br>팀의 할 일을 한곳에서 관리하세요." : "작은 할 일부터 큰 목표까지.<br>팀의 다음 한 걸음을 이곳에 모아 보세요.";
+      const action = empty.querySelector("button");
+      if (noBoard) {
+        action.removeAttribute("data-add-task");
+        action.setAttribute("data-start-project", "");
+        action.textContent = "＋ 프로젝트 만들기";
+        action.disabled = false;
+      } else {
+        action.removeAttribute("data-start-project");
+        action.setAttribute("data-add-task", "");
+        action.textContent = "＋ 작업 추가";
+      }
+      empty.hidden = !showEmpty;
+      document.querySelector(".board-scroll").classList.toggle("is-empty", showEmpty);
+    }
     visibleTaskCount.textContent = String(tasks.length);
     resultSummary.textContent = filtered ? `검색·필터 결과 · 전체 ${state.tasks.length}개` : "저장된 업무";
     for (const { id } of STATUSES) {
@@ -252,20 +287,28 @@ import { validateTaskInput } from "./lib/task-validation.js";
       else if (state.tasks.length === 0 && id === "todo") taskLists.get(id).innerHTML = '<div class="empty-state empty-state-first"><span>아직 등록된 업무가 없어요.</span><button type="button" data-add-task data-status="todo">첫 업무 추가</button></div>';
       else taskLists.get(id).innerHTML = '<p class="empty-state">이 상태에 업무가 없습니다.</p>';
     }
-    $$('[data-add-task]').forEach((button) => { button.disabled = !state.board || state.status !== "ready" || state.busy; });
+    $$('[data-add-task]').forEach((button) => { button.disabled = !state.board || state.status !== "ready" || state.rosterError || state.busy; });
     sortButton.setAttribute("aria-pressed", String(sortDirection === "desc"));
     sortButton.setAttribute("aria-label", sortDirection === "asc" ? "마감일 빠른 순 정렬 중. 늦은 순으로 바꾸기" : "마감일 늦은 순 정렬 중. 빠른 순으로 바꾸기");
   }
 
   async function loadBoard(board, metadata = {}) {
+    syncSideNavigation();
     const requestId = ++state.requestId;
     state.board = board ? { ...board } : null;
-    state.revision = Number(metadata.revision ?? state.revision + 1);
+    state.revision += 1;
+    state.busy = false;
+    state.busyTaskIds = new Set();
+    taskSubmitButton.disabled = false;
+    closeTaskDialog();
+    clearTimeout(toastTimer);
+    toast.hidden = true;
     state.members = [];
     state.tasks = [];
     state.rosterError = false;
     resetFilters();
     state.status = board ? "loading" : "no-board";
+    renderAssigneeControls();
     render();
     if (!board) {
       showNotice("공유 보드를 선택하면 업무가 서버에서 불러와집니다.", "platform-info");
@@ -273,8 +316,8 @@ import { validateTaskInput } from "./lib/task-validation.js";
     }
 
     const [tasksResult, membersResult] = await Promise.allSettled([
-      listTasks(supabaseClient, board.id),
-      listBoardMembers(supabaseClient, board.id),
+      listTasks(client, board.id),
+      listBoardMembers(client, board.id),
     ]);
     if (requestId !== state.requestId || state.board?.id !== board.id) return;
     if (tasksResult.status === "rejected") {
@@ -289,13 +332,14 @@ import { validateTaskInput } from "./lib/task-validation.js";
       state.rosterError = true;
       showNotice("업무는 불러왔지만 구성원 목록을 불러오지 못했습니다. 담당자는 미정으로 표시됩니다.", "warning");
     }
+    renderAssigneeControls();
     state.status = "ready";
-    if (!state.rosterError) showNotice("업무 데이터가 선택한 공유 보드와 연결되었습니다.", "platform-info");
+    if (!state.rosterError) showNotice("", "platform-info");
     render();
   }
 
   function openTaskDialog(task = null, status = "todo") {
-    if (!state.board || state.status !== "ready" || state.busy) return;
+    if (!state.board || state.status !== "ready" || state.rosterError || state.busy || state.busyTaskIds.size) return;
     editingTaskId = task?.id || null;
     taskForm.reset();
     clearTaskErrors();
@@ -311,14 +355,15 @@ import { validateTaskInput } from "./lib/task-validation.js";
     setTimeout(() => taskTitleInput.focus(), 0);
   }
 
-  function closeTaskDialog() {
+  function closeTaskDialog(force = false) {
+    if (state.busy && !force) return;
     if (taskDialog.close && taskDialog.open) taskDialog.close();
     else { taskDialog.removeAttribute("open"); editingTaskId = null; }
   }
 
   async function submitTask(event) {
     event.preventDefault();
-    if (state.busy || !state.board || state.status !== "ready") return;
+    if (state.busy || state.busyTaskIds.size || !state.board || state.status !== "ready") return;
     clearTaskErrors();
     const input = {
       title: taskTitleInput.value,
@@ -339,18 +384,21 @@ import { validateTaskInput } from "./lib/task-validation.js";
     state.busy = true;
     taskSubmitButton.disabled = true;
     taskSubmitButton.textContent = "저장 중…";
+    render();
     try {
       const saved = taskId
-        ? await updateTask(supabaseClient, boardId, taskId, input)
-        : await createTask(supabaseClient, boardId, input);
+        ? await updateTask(client, boardId, taskId, input)
+        : await createTask(client, boardId, input);
       if (requestRevision !== state.revision || state.board?.id !== boardId) return;
       state.tasks = taskId ? state.tasks.map((task) => task.id === taskId ? saved : task) : [saved, ...state.tasks];
       render();
-      closeTaskDialog();
+      closeTaskDialog(true);
       announce(taskId ? "업무를 수정했어요." : "새 업무를 추가했어요.");
     } catch (error) {
+      if (requestRevision !== state.revision) return;
       showTaskError(error);
     } finally {
+      if (requestRevision !== state.revision) return;
       state.busy = false;
       taskSubmitButton.disabled = false;
       taskSubmitButton.textContent = taskId ? "변경 저장" : "업무 추가";
@@ -359,40 +407,44 @@ import { validateTaskInput } from "./lib/task-validation.js";
   }
 
   async function changeTaskStatus(taskId, status, select) {
-    if (!state.board || state.status !== "ready" || state.busyTaskIds.has(taskId)) return;
+    if (!state.board || state.status !== "ready" || state.busy || state.busyTaskIds.has(taskId)) return;
     const boardId = state.board.id;
     const requestRevision = state.revision;
     state.busyTaskIds.add(taskId);
     select.disabled = true;
     try {
-      const saved = await updateTaskStatus(supabaseClient, boardId, taskId, status);
+      const saved = await updateTaskStatus(client, boardId, taskId, status);
       if (requestRevision !== state.revision || state.board?.id !== boardId) return;
       state.tasks = state.tasks.map((task) => task.id === taskId ? saved : task);
       announce(`업무 상태를 '${STATUS_LABELS[status]}'(으)로 변경했어요.`);
     } catch (error) {
+      if (requestRevision !== state.revision) return;
       announce(errorMessage(error, "업무 상태를 변경하지 못했습니다. 기존 상태를 유지했어요."), "error");
     } finally {
+      if (requestRevision !== state.revision) return;
       state.busyTaskIds.delete(taskId);
       render();
     }
   }
 
   async function deleteTask(taskId) {
-    if (!state.board || state.status !== "ready") return;
+    if (!state.board || state.status !== "ready" || state.busy || state.busyTaskIds.has(taskId)) return;
     const task = state.tasks.find((item) => item.id === taskId);
-    if (!task || !window.confirm(`'${task.title}' 업무를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!task || (task.createdBy !== userId && state.board.owner_id !== userId) || !window.confirm(`'${task.title}' 업무를 삭제할까요? 되돌릴 수 없습니다.`)) return;
     const boardId = state.board.id;
     const requestRevision = state.revision;
     state.busyTaskIds.add(taskId);
     render();
     try {
-      await deleteRemoteTask(supabaseClient, boardId, taskId);
+      await deleteRemoteTask(client, boardId, taskId);
       if (requestRevision !== state.revision || state.board?.id !== boardId) return;
       state.tasks = state.tasks.filter((item) => item.id !== taskId);
       announce("업무를 삭제했어요.");
     } catch (error) {
+      if (requestRevision !== state.revision) return;
       announce(errorMessage(error, "업무를 삭제하지 못했습니다. 기존 업무를 유지했어요."), "error");
     } finally {
+      if (requestRevision !== state.revision) return;
       state.busyTaskIds.delete(taskId);
       render();
     }
@@ -401,6 +453,24 @@ import { validateTaskInput } from "./lib/task-validation.js";
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
     if (!target) return;
+    if (target.closest("[data-start-project]")) { $(".shared-board-create")?.click(); return; }
+    if (target.closest(".sidebar-toggle")) {
+      const toggle = $(".sidebar-toggle");
+      const open = document.body.classList.toggle("sidebar-open");
+      toggle.setAttribute("aria-expanded", String(open));
+      syncSideNavigation();
+      return;
+    }
+    if (target.closest("[data-focus-search]")) { document.body.classList.remove("sidebar-open"); syncSideNavigation(); searchInput.focus(); return; }
+    const view = target.closest("[data-task-view]");
+    if (view) {
+      taskView = view.dataset.taskView;
+      resetFilters(); render();
+      document.body.classList.remove("sidebar-open");
+      $(".sidebar-toggle")?.setAttribute("aria-expanded", "false");
+      syncSideNavigation();
+      return;
+    }
     if (target.closest("[data-retry-tasks]")) { void loadBoard(state.board, { revision: state.revision }); return; }
     const addTask = target.closest("[data-add-task]");
     if (addTask) { openTaskDialog(null, addTask.dataset.status || "todo"); return; }
@@ -423,31 +493,52 @@ import { validateTaskInput } from "./lib/task-validation.js";
   }
 
   function initialize() {
+    syncSideNavigation();
+    on(window, "resize", syncSideNavigation);
     $(".project-section")?.setAttribute("hidden", "");
     $(".mobile-board-switch")?.setAttribute("hidden", "");
     $("#board-dialog")?.setAttribute("hidden", "");
-    taskForm.addEventListener("submit", submitTask);
-    taskDialog.addEventListener("close", () => { editingTaskId = null; taskForm.reset(); clearTaskErrors(); });
-    taskDialog.addEventListener("click", (event) => { if (event.target === taskDialog) closeTaskDialog(); });
-    searchInput.addEventListener("input", render);
-    $$("[data-status-filter]").forEach((input) => input.addEventListener("change", () => {
+    taskForm.addEventListener("submit", submitTask, { signal: events.signal });
+    taskDialog.addEventListener("cancel", (event) => { if (state.busy) event.preventDefault(); }, { signal: events.signal });
+    on(taskDialog, "close", () => { editingTaskId = null; taskForm.reset(); clearTaskErrors(); });
+    on(taskDialog, "click", (event) => { if (event.target === taskDialog) closeTaskDialog(); });
+    on(searchInput, "input", render);
+    $$("[data-status-filter]").forEach((input) => on(input, "change", () => {
       const selected = new Set($$("[data-status-filter]").filter((item) => item.checked).map((item) => item.value));
       activeStatuses = selected.size === STATUSES.length ? null : selected;
       render();
     }));
-    document.addEventListener("click", handleClick);
-    document.addEventListener("change", (event) => {
+    document.addEventListener("click", handleClick, { signal: events.signal });
+    on(document, "change", (event) => {
       const select = event.target instanceof Element ? event.target.closest("[data-task-status]") : null;
       if (!select || !Object.hasOwn(STATUS_LABELS, select.value)) return;
       void changeTaskStatus(select.dataset.taskStatus, select.value, select);
     });
-    document.addEventListener("keydown", (event) => {
+    on(document, "keydown", (event) => {
+      if (event.key === "Escape") { document.body.classList.remove("sidebar-open"); $(".sidebar-toggle")?.setAttribute("aria-expanded", "false"); syncSideNavigation(); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); searchInput.focus(); }
     });
-    window.__TEAMBOARD_SET_ACTIVE_BOARD = (board, metadata = {}) => { void loadBoard(board, metadata); };
+    window.__TEAMBOARD_SET_ACTIVE_BOARD = loadBoard;
+    const refresh = document.createElement("button");
+    refresh.type = "button";
+    refresh.className = "secondary-button";
+    refresh.textContent = "업무 새로고침";
+    refresh.dataset.refreshTasks = "";
+    $(".board-caption")?.append(refresh);
+    refresh.addEventListener("click", () => { if (!state.busy && !state.busyTaskIds.size) void loadBoard(state.board); }, { signal: events.signal });
     render();
     showNotice("공유 보드를 선택하면 업무가 서버에서 불러와집니다.", "platform-info");
   }
 
   initialize();
-})();
+  return {
+    selectBoard: loadBoard,
+    dispose() {
+      void loadBoard(null);
+      events.abort();
+      document.querySelector("[data-refresh-tasks]")?.remove();
+      clearTimeout(toastTimer);
+      delete window.__TEAMBOARD_SET_ACTIVE_BOARD;
+    },
+  };
+}

@@ -130,8 +130,10 @@ export async function listTasks(client, boardId) {
 export async function createTask(client, boardId, input) {
   const requestedBoardId = normalizeBoardId(boardId);
   const validation = validateTaskInput(input);
-  if (!validation.valid) throw new TaskRepositoryInputError(validation.errors);
-  const assigneeId = normalizeAssigneeId(input);
+  let assigneeId;
+  try { assigneeId = normalizeAssigneeId(input); }
+  catch (error) { Object.assign(validation.errors, error.fieldErrors); }
+  if (Object.keys(validation.errors).length) throw new TaskRepositoryInputError(validation.errors);
 
   if (typeof client?.from !== "function") {
     throw new BoardRepositoryError("request_failed");
@@ -173,4 +175,55 @@ export async function createTask(client, boardId, input) {
     throw new BoardRepositoryError("request_failed");
   }
   return task;
+}
+
+
+async function mutateTask(client, boardId, taskId, values) {
+  const board = normalizeBoardId(boardId);
+  const id = normalizeBoardId(taskId);
+  if (typeof client?.from !== "function") throw new BoardRepositoryError("request_failed");
+  await requireAuthenticatedUser(client);
+  let result;
+  try {
+    const query = values === null ? client.from("tasks").delete() : client.from("tasks").update(values);
+    result = await query.eq("board_id", board).eq("id", id).select(TASK_COLUMNS).single();
+  } catch (error) { throw toRepositoryError(error); }
+  if (result?.error) throw toRepositoryError(result.error);
+  const task = normalizeTask(result?.data, board);
+  if (task.id !== id) throw new BoardRepositoryError("request_failed");
+  return task;
+}
+
+/** Replace editable fields; identity and timestamps are never caller-controlled. */
+export async function updateTask(client, boardId, taskId, input) {
+  normalizeBoardId(boardId);
+  normalizeBoardId(taskId);
+  const validation = validateTaskInput(input);
+  let assigneeId;
+  try { assigneeId = normalizeAssigneeId(input); }
+  catch (error) { Object.assign(validation.errors, error.fieldErrors); }
+  if (Object.keys(validation.errors).length) throw new TaskRepositoryInputError(validation.errors);
+  const value = validation.value;
+  const task = await mutateTask(client, boardId, taskId, {
+    title: value.title, description: value.description || null, status: value.status,
+    assignee_id: assigneeId, due_date: value.dueDate,
+  });
+  if (task.title !== value.title || task.description !== value.description
+    || task.status !== value.status || task.assigneeId !== assigneeId || task.dueDate !== value.dueDate) {
+    throw new BoardRepositoryError("request_failed");
+  }
+  return task;
+}
+
+/** Update only status, preserving other fields even after another member edits them. */
+export async function updateTaskStatus(client, boardId, taskId, status) {
+  if (!TASK_STATUSES.has(status)) throw new TaskRepositoryInputError({ status: "진행 상태를 확인해 주세요." });
+  const task = await mutateTask(client, boardId, taskId, { status });
+  if (task.status !== status) throw new BoardRepositoryError("request_failed");
+  return task;
+}
+
+/** Require a returned row: an RLS-filtered or missing deletion is never success. */
+export async function deleteTask(client, boardId, taskId) {
+  return (await mutateTask(client, boardId, taskId, null)).id;
 }

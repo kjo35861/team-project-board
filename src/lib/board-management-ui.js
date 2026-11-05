@@ -171,6 +171,7 @@ export function mountBoardManagementUI({ client, userId, root, repository = {}, 
           client,
           boardId: board.id,
           currentUserId: userId,
+          repository,
           root: memberRoot,
           onBoardLeft: async () => {
             expandedMemberBoardId = null;
@@ -183,7 +184,7 @@ export function mountBoardManagementUI({ client, userId, root, repository = {}, 
         if (board.owner_id === userId) {
           const inviteRoot = element("div", "shared-board-invite-root");
           panel.append(inviteRoot);
-          inviteUI = mountBoardInviteUI({ client, boardId: board.id, root: inviteRoot });
+          inviteUI = mountBoardInviteUI({ client, boardId: board.id, root: inviteRoot, repository });
         }
       }
       items.append(item);

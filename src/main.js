@@ -21,18 +21,11 @@ if (!supabaseConfig.configured || !supabaseClient) {
   mountConfigurationScreen(supabaseConfig.state);
 } else {
   let appInitialization = null;
+  let taskBoard = null;
   let authController;
   let boardManagementUI;
   let inviteAcceptanceUI;
   let resetInProgress = false;
-
-  function showLocalDataNotice() {
-    const notice = document.querySelector("#app-notice");
-    if (!notice) return;
-    notice.textContent = "공유 보드·구성원·초대 관리는 서버에 연결됩니다. 업무 보드는 아직 로컬 프로토타입이며 아래 업무 데이터는 선택한 공유 보드와 연결되지 않습니다.";
-    notice.dataset.kind = "platform-info";
-    notice.hidden = false;
-  }
 
   function updateProfile(user) {
     const profileName = document.querySelector(".profile-copy strong");
@@ -45,15 +38,18 @@ if (!supabaseConfig.configured || !supabaseClient) {
   }
 
   function showActiveServerBoard(board, metadata = {}) {
+    document.body.classList.remove("sidebar-open");
+    document.querySelector(".sidebar-toggle")?.setAttribute("aria-expanded", "false");
     window.__TEAMBOARD_ACTIVE_SERVER_BOARD = board ? { ...board } : null;
+    window.__TEAMBOARD_SET_ACTIVE_BOARD?.(board, metadata);
     const active = document.querySelector("#server-board-active");
     if (!active) return;
     active.hidden = false;
     active.dataset.boardId = board?.id || "";
     active.dataset.selectionRevision = String(metadata.revision ?? "");
     active.textContent = board
-      ? `선택된 공유 보드: ${board.name} · ${board.owner_id === window.__TEAMBOARD_AUTH_USER_ID ? "소유자" : "구성원"}. 아래 업무 영역은 이 보드와 연결되지 않은 로컬 시안입니다.`
-      : "참여 중인 공유 보드가 없습니다. 아래 업무 영역은 로컬 시안입니다.";
+      ? `선택된 공유 보드: ${board.name} · ${board.owner_id === window.__TEAMBOARD_AUTH_USER_ID ? "소유자" : "구성원"}. 업무를 서버에 저장하며 새로고침으로 최신 내용을 확인할 수 있습니다.`
+      : "참여 중인 공유 보드가 없습니다. 공유 보드를 만들거나 초대를 수락해 주세요.";
   }
 
   function mountRemoteBoardManagement(user) {
@@ -71,7 +67,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
       const heading = document.createElement("h2");
       heading.className = "server-board-heading";
       heading.id = "server-board-heading";
-      heading.textContent = "공유 보드 · 서버";
+      heading.textContent = "프로젝트";
 
       const root = document.createElement("div");
       root.id = "server-board-list";
@@ -82,16 +78,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
       active.setAttribute("aria-live", "polite");
       active.hidden = true;
       section.append(heading, root, active);
-      if (notice?.parentElement === pageContent) notice.insertAdjacentElement("afterend", section);
-      else pageContent.prepend(section);
-    }
-
-    if (!document.querySelector('link[data-board-list-styles]')) {
-      const stylesheet = document.createElement("link");
-      stylesheet.rel = "stylesheet";
-      stylesheet.href = "/board-list.css";
-      stylesheet.dataset.boardListStyles = "true";
-      document.head.append(stylesheet);
+      (document.querySelector("#server-sidebar-root") || pageContent).append(section);
     }
 
     boardManagementUI?.dispose();
@@ -110,9 +97,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
     if (!root) {
       root = document.createElement("div");
       root.id = "invite-acceptance-root";
-      const boards = document.querySelector("#server-board-section");
-      if (boards) boards.insertAdjacentElement("afterend", root);
-      else pageContent.prepend(root);
+      pageContent.prepend(root);
     }
 
     inviteAcceptanceUI?.dispose();
@@ -138,10 +123,11 @@ if (!supabaseConfig.configured || !supabaseClient) {
   async function initializeAuthenticatedApp(user) {
     if (typeof user?.id !== "string" || !user.id) throw new Error("인증 사용자 식별자를 확인할 수 없습니다.");
     window.__TEAMBOARD_AUTH_USER_ID = user.id;
-    if (!appInitialization) appInitialization = import("../app.js").catch((error) => { appInitialization = null; throw error; });
-    await appInitialization;
+    if (!appInitialization) appInitialization = import("./task-board-app.js").catch((error) => { appInitialization = null; throw error; });
+    const taskModule = await appInitialization;
+    if (!taskBoard) taskBoard = taskModule.mountTaskBoard({ client: supabaseClient, userId: user.id });
     updateProfile(user);
-    showLocalDataNotice();
+
     mountRemoteBoardManagement(user);
     mountInviteFlow();
     if (appShell) appShell.hidden = false;
@@ -155,6 +141,7 @@ if (!supabaseConfig.configured || !supabaseClient) {
     inviteAcceptanceUI?.dispose();
     boardManagementUI = null;
     inviteAcceptanceUI = null;
+    window.__TEAMBOARD_SET_ACTIVE_BOARD?.(null);
     window.__TEAMBOARD_ACTIVE_SERVER_BOARD = null;
     clearPendingInvite();
     if (appShell) appShell.hidden = true;
