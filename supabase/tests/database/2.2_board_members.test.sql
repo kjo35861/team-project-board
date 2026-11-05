@@ -59,21 +59,21 @@ select throws_ok(
 );
 
 select throws_ok(
-  $$do $test$
+  $sql$do $test$
     begin
       delete from public.board_members
        where board_id = '22000000-0000-4000-8000-000000000010'
          and user_id = '22000000-0000-4000-8000-000000000001';
       set constraints all immediate;
     end;
-  $test$$$,
+  $test$;$sql$,
   '23514',
   null,
   'rejects deleting the only owner membership at transaction end'
 );
 
 select throws_ok(
-  $$do $test$
+  $sql$do $test$
     begin
       insert into public.boards (id, name, owner_id)
       values (
@@ -83,21 +83,21 @@ select throws_ok(
       );
       set constraints all immediate;
     end;
-  $test$$$,
+  $test$;$sql$,
   '23514',
   null,
   'rejects committing a board without its matching owner membership'
 );
 
 select throws_ok(
-  $$do $test$
+  $sql$do $test$
     begin
       update public.boards
          set owner_id = '22000000-0000-4000-8000-000000000002'
        where id = '22000000-0000-4000-8000-000000000010';
       set constraints all immediate;
     end;
-  $test$$$,
+  $test$;$sql$,
   '23514',
   null,
   'rejects changing board owner without atomically updating the owner membership'
