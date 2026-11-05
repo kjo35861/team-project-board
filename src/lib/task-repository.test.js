@@ -15,7 +15,7 @@ const ROW = {
 };
 
 function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], error = null, thrown = null } = {}) {
-  const calls = { from: vi.fn(), select: vi.fn(), eq: vi.fn(), order: vi.fn() };
+  const calls = { from: vi.fn(), select: vi.fn(), eq: vi.fn(), order: vi.fn(), limit: vi.fn(), gt: vi.fn() };
   const builder = {
     then(resolve, reject) {
       if (thrown) return Promise.reject(thrown).then(resolve, reject);
@@ -27,6 +27,8 @@ function makeClient({ user = { id: "user-1" }, authError = null, data = [ROW], e
   calls.select.mockReturnValue(builder);
   calls.eq.mockReturnValue(builder);
   calls.order.mockReturnValue(builder);
+  calls.limit.mockReturnValue(builder);
+  calls.gt.mockReturnValue(builder);
   const getUser = vi.fn().mockResolvedValue({ data: { user }, error: authError });
   return { client: { auth: { getUser }, from: calls.from }, calls, getUser };
 }
@@ -64,11 +66,9 @@ describe("listTasks", () => {
     }]);
     expect(setup.getUser).toHaveBeenCalledOnce();
     expect(setup.calls.from).toHaveBeenCalledWith("tasks");
-    expect(setup.calls.select).toHaveBeenCalledWith("id,board_id,title,description,status,assignee_id,due_date,created_by,created_at,updated_at");
+    expect(setup.calls.select).toHaveBeenCalledWith("id,board_id,title,description,status,assignee_id,due_date,created_by,created_at,updated_at", { count: "exact" });
     expect(setup.calls.eq).toHaveBeenCalledWith("board_id", "board-1");
-    expect(setup.calls.order).toHaveBeenNthCalledWith(1, "due_date", { ascending: true, nullsFirst: false });
-    expect(setup.calls.order).toHaveBeenNthCalledWith(2, "created_at", { ascending: false });
-    expect(setup.calls.order).toHaveBeenNthCalledWith(3, "id", { ascending: true });
+    expect(setup.calls.order).toHaveBeenCalledWith("id", { ascending: true });
   });
 
   it("does not query until a current authenticated user has been confirmed", async () => {
@@ -225,4 +225,9 @@ describe("createTask", () => {
     await expect(createTask(mismatch.client, "board-1", { title: "새 업무" }))
       .rejects.toMatchObject({ code: "request_failed" });
   });
+});
+
+it("keeps due-date ordering after loading rows by immutable ID", async () => {
+ const setup=makeClient({data:[ROW,{...ROW,id:'task-2',due_date:'2026-08-10'},{...ROW,id:'task-3',due_date:null}]});
+ expect((await listTasks(setup.client,'board-1')).map(t=>t.id)).toEqual(['task-2','task-1','task-3']);
 });

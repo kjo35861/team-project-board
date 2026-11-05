@@ -9,6 +9,7 @@ import {
 
 function makeClient({ user = { id: "user-1" }, authError = null, queryResult = { data: [], error: null }, queryError = null } = {}) {
   const order = vi.fn();
+  const limit=vi.fn(), gt=vi.fn();
   const select = vi.fn();
   const from = vi.fn();
   const builder = {
@@ -18,7 +19,8 @@ function makeClient({ user = { id: "user-1" }, authError = null, queryResult = {
         : Promise.resolve(queryResult).then(resolve, reject);
     },
   };
-  Object.assign(builder, { select, order });
+  Object.assign(builder, { select, order, limit, gt });
+  limit.mockReturnValue(builder);gt.mockReturnValue(builder);
   order.mockImplementation(() => builder);
   select.mockImplementation(() => builder);
   from.mockImplementation(() => builder);
@@ -55,9 +57,8 @@ describe("listBoards", () => {
     ]);
     expect(setup.from).toHaveBeenCalledOnce();
     expect(setup.from).toHaveBeenCalledWith("boards");
-    expect(setup.select).toHaveBeenCalledWith("id,name,owner_id,created_at,updated_at");
-    expect(setup.order).toHaveBeenNthCalledWith(1, "updated_at", { ascending: false });
-    expect(setup.order).toHaveBeenNthCalledWith(2, "id", { ascending: true });
+    expect(setup.select).toHaveBeenCalledWith("id,name,owner_id,created_at,updated_at", { count: "exact" });
+    expect(setup.order).toHaveBeenCalledWith("id", { ascending: true });
   });
 
   it("never queries boards without a verified current user", async () => {

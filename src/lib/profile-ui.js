@@ -26,7 +26,7 @@ export async function saveMyDisplayName(client,input) {
 export function mountProfileUI({client,onSaved=()=>{}}) {
   const root=document.querySelector('.profile-row');
   if(!root) return {dispose(){}};
-  let disposed=false,busy=false,name='';
+  let disposed=false,busy=false,name='',nameRevision=0;
   const button=document.createElement('button'); button.type='button';button.className='profile-edit';button.textContent='이름 변경';
   root.append(button);
   const dialog=document.createElement('dialog'); dialog.className='task-dialog';dialog.setAttribute('aria-labelledby','profile-title');
@@ -34,14 +34,15 @@ export function mountProfileUI({client,onSaved=()=>{}}) {
   document.body.append(dialog);
   const input=dialog.querySelector('input'), form=dialog.querySelector('form'), error=dialog.querySelector('[role=alert]');
   function display(value){name=value||'';if(name){root.querySelector('strong').textContent=name;root.querySelector('.avatar').textContent=Array.from(name)[0];}}
-  readMyProfile(client).then(value=>{if(!disposed)display(value);}).catch(()=>{});
+  const readRevision=nameRevision;
+  readMyProfile(client).then(value=>{if(!disposed&&readRevision===nameRevision)display(value);}).catch(()=>{});
   button.addEventListener('click',()=>{input.value=name;error.textContent='';if(dialog.showModal)dialog.showModal();else dialog.setAttribute('open','');input.focus();});
   dialog.querySelector('[data-profile-cancel]').addEventListener('click',()=>{if(!busy)if(dialog.close)dialog.close();else dialog.removeAttribute('open');});
   dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
   form.addEventListener('submit',async e=>{
     e.preventDefault();if(busy)return;
     busy=true;form.querySelectorAll('button,input').forEach(el=>el.disabled=true);error.textContent='';
-    try {const value=await saveMyDisplayName(client,input.value);if(disposed)return;display(value);if(dialog.close)dialog.close();else dialog.removeAttribute('open');onSaved(value);}
+    try {const value=await saveMyDisplayName(client,input.value);if(disposed)return;nameRevision+=1;display(value);if(dialog.close)dialog.close();else dialog.removeAttribute('open');onSaved(value);}
     catch(e){if(!disposed)error.textContent=e.code==='invalid_input'?'이름을 1~80자로 입력해 주세요.':'이름을 저장하지 못했습니다. 연결과 로그인 상태를 확인하고 다시 시도해 주세요.';}
     finally{busy=false;if(!disposed)form.querySelectorAll('button,input').forEach(el=>el.disabled=false);}
   });

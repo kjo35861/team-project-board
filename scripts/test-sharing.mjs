@@ -1,3 +1,4 @@
+import { listTasks } from '../src/lib/task-repository.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -48,6 +49,10 @@ assert.equal((await member.client.from('tasks').select('id').eq('board_id',board
 const canceled=(await rpc(owner,'create_board_invite',{p_board_id:board}))[0];
 await rpc(owner,'cancel_board_invite',{p_invite_id:canceled.invite_id});
 assert((await outsider.client.rpc('accept_board_invite',{p_token:canceled.token})).error,'Canceled invitation must fail');
+const bulk=Array.from({length:1205},(_,i)=>({board_id:board,title:`Large board task ${i}`,created_by:owner.id}));
+for(let i=0;i<bulk.length;i+=300) assert.ifError((await owner.client.from('tasks').insert(bulk.slice(i,i+300))).error);
+assert.equal((await listTasks(owner.client,board)).length,1206,'Board loading must include tasks beyond the API 1000-row cap');
+console.log('PASS: all 1206 tasks loaded beyond the default API row cap.');
 for(const user of [owner,member,outsider]) await user.client.auth.signOut();
 console.log('PASS: three real accounts, invite acceptance/reuse/cancellation, shared CRUD, outsider isolation, deletion policy, assignee cleanup, immutable author. Disposable local data only.');
 

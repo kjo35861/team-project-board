@@ -1,3 +1,4 @@
+import { fetchAllRowsById } from "./paginated-query.js";
 const BOARD_COLUMNS = "id,name,owner_id,created_at,updated_at";
 
 const ERROR_MESSAGES = {
@@ -110,23 +111,15 @@ export async function listBoards(client) {
 
   await requireAuthenticatedUser(client);
 
-  let result;
+  let rows;
   try {
-    result = await client
-      .from("boards")
-      .select(BOARD_COLUMNS)
-      .order("updated_at", { ascending: false })
-      .order("id", { ascending: true });
-  } catch (error) {
-    throw toRepositoryError(error);
-  }
-
-  if (result?.error) throw toRepositoryError(result.error);
-  if (!Array.isArray(result?.data)) throw new BoardRepositoryError("request_failed");
+    rows = await fetchAllRowsById(() => client.from("boards").select(BOARD_COLUMNS, { count: "exact" }));
+  } catch (error) { throw toRepositoryError(error); }
+  rows.sort((a,b) => (Date.parse(b.updated_at) || 0) - (Date.parse(a.updated_at) || 0) || a.id.localeCompare(b.id));
 
   // Return only the fields requested from the database, not arbitrary response
   // properties. RLS limits these rows to boards the current user belongs to.
-  return result.data.map((board) => ({
+  return rows.map((board) => ({
     id: board.id,
     name: board.name,
     owner_id: board.owner_id,

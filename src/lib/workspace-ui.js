@@ -65,12 +65,16 @@ export function mountWorkspaceUI({ userId, onSelect, onCreate, onRefresh }) {
     }
     list.append(grid);
   }
+  function unavailableBoard() {
+    display(true, false, true);
+    window.history.replaceState(null, '', '#workspace');
+  }
   function route() {
     if (window.location.hash === '#workspace') { display(true, false, true); return; }
     if (window.location.hash.startsWith('#board/')) {
       let id;
-      try { id = decodeURIComponent(window.location.hash.slice(7)); } catch { display(true); return; }
-      if (!onSelect(id)) display(true);
+      try { id = decodeURIComponent(window.location.hash.slice(7)); } catch { unavailableBoard(); return; }
+      if (!onSelect(id)) unavailableBoard();
     } else display(false);
   }
   document.addEventListener('click', event => {
@@ -98,9 +102,14 @@ export function mountWorkspaceUI({ userId, onSelect, onCreate, onRefresh }) {
       if (overview) document.title = '내 워크스페이스 | 팀 프로젝트 협업 보드';
     },
     onBoardSelected(board, metadata = {}) {
+      const previous = activeBoard;
       activeBoard = board;
       if (metadata.reason === 'user-selection') display(false, true, true);
-      else if (!overview) display(false);
+      else if (!overview) {
+        const removed = previous && previous.id !== board?.id;
+        display(Boolean(removed && !board));
+        if (removed) window.history.replaceState(null, '', board ? `#board/${encodeURIComponent(board.id)}` : '#workspace');
+      }
     },
     dispose() { events.abort(); list.replaceChildren(); },
   };

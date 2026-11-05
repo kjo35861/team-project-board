@@ -26,3 +26,16 @@ it('preserves a failed name draft and prevents duplicate saves',async()=>{
  for(let i=0;i<10;i++)await Promise.resolve();
  expect(document.querySelector('dialog input').value).toBe('Draft');expect(document.querySelector('dialog').open).toBe(true);ui.dispose();
 });
+it('ignores a late initial read after a newer profile save',async()=>{
+ document.body.innerHTML='<div class="profile-row"><span class="avatar"></span><strong>Email</strong></div>';
+ let resolveRead;const pending=new Promise(resolve=>{resolveRead=resolve;});
+ const c=client(null);c.rpc.mockImplementation(name=>name==='get_my_profile'?pending:Promise.resolve({data:'New name'}));
+ const ui=mountProfileUI({client:c});for(let i=0;i<4;i++)await Promise.resolve();
+ document.querySelector('.profile-edit').click();document.querySelector('dialog input').value='New name';
+ document.querySelector('dialog form').dispatchEvent(new Event('submit',{cancelable:true}));
+ for(let i=0;i<10;i++)await Promise.resolve();
+ resolveRead({data:[{user_id:'u',display_name:'Old name'}]});
+ for(let i=0;i<10;i++)await Promise.resolve();
+ expect(document.querySelector('.profile-row strong').textContent).toBe('New name');
+ ui.dispose();
+});

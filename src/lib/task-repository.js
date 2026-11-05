@@ -1,3 +1,4 @@
+import { fetchAllRowsById } from "./paginated-query.js";
 import { BoardRepositoryError, toRepositoryError } from "./board-repository.js";
 import { validateTaskInput } from "./task-validation.js";
 
@@ -102,25 +103,14 @@ export async function listTasks(client, boardId) {
 
   await requireAuthenticatedUser(client);
 
-  let result;
+  let rows;
   try {
-    result = await client
-      .from("tasks")
-      .select(TASK_COLUMNS)
-      .eq("board_id", requestedBoardId)
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: true });
-  } catch (error) {
-    throw toRepositoryError(error);
-  }
-
-  if (result?.error) throw toRepositoryError(result.error);
-  if (!Array.isArray(result?.data)) throw new BoardRepositoryError("request_failed");
-
-  // The explicit board filter limits the query; RLS remains the authorization
-  // boundary. Verify the returned scope and whitelist fields before exposing it.
-  return result.data.map((row) => normalizeTask(row, requestedBoardId));
+    rows = await fetchAllRowsById(() => client.from("tasks")
+      .select(TASK_COLUMNS, { count: "exact" }).eq("board_id", requestedBoardId));
+  } catch (error) { throw toRepositoryError(error); }
+  return rows.map(row => normalizeTask(row, requestedBoardId)).sort((a,b) =>
+    (a.dueDate || "9999-99-99").localeCompare(b.dueDate || "9999-99-99")
+    || Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id));
 }
 
 /**

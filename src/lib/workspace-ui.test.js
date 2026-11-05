@@ -45,8 +45,29 @@ describe('workspace overview navigation',()=>{
   });
   it('honors direct board links after the first server snapshot',async()=>{
     history.replaceState(null,'','#board/b');
-    ui.update({status:'success',boards});await Promise.resolve();
+    ui.update({status:'success',boards});
+    ui.onBoardSelected(boards[0],{reason:'list-refresh'});await Promise.resolve();
     expect(select).toHaveBeenCalledWith('b');
     expect(document.querySelector('#breadcrumb-board-name').textContent).toBe(boards[1].name);
   });
+});
+it('replaces a deleted board address with the actual fallback board',()=>{
+ ui.onBoardSelected(boards[0],{reason:'user-selection'});
+ ui.onBoardSelected(boards[1],{reason:'list-refresh'});
+ expect(location.hash).toBe('#board/b');
+ expect(document.querySelector('#breadcrumb-board-name').textContent).toBe(boards[1].name);
+});
+it('returns to overview when the last active board disappears',()=>{
+ ui.onBoardSelected(boards[0],{reason:'user-selection'});
+ ui.onBoardSelected(null,{reason:'list-refresh'});
+ expect(location.hash).toBe('#workspace');
+ expect(document.querySelector('#workspace-page').hidden).toBe(false);
+});
+
+it('replaces inaccessible or malformed board addresses with the workspace route',()=>{
+ for(const hash of ['#board/unavailable','#board/%E0%A4%A']) {
+  history.replaceState(null,'',hash);window.dispatchEvent(new HashChangeEvent('hashchange'));
+  expect(location.hash).toBe('#workspace');
+  expect(document.querySelector('#workspace-page').hidden).toBe(false);
+ }
 });
